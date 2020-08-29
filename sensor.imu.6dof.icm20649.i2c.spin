@@ -416,13 +416,15 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
         } $200..$209, $210..$215, $252..$254, $300..$317:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := core#REG_BANK_SEL        ' Set register bank (0..3):
-            cmd_pkt.byte[2] := reg_nr >> 8              '   use the bank # encoded in nibble 2
-            cmd_pkt.byte[3] := SLAVE_WR
-            cmd_pkt.byte[4] := reg_nr & $ff             ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[2] := reg_nr.byte[1] << core#USER_BANK '   use the bank # encoded in nibble 2
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 3)
+
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr.byte[0]            ' Actual reg # is just the lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt.byte[3], 2)
+            repeat tmp from 0 to 1
+            i2c.wr_block(@cmd_pkt, 2)
 
             i2c.start{}
             i2c.write(SLAVE_RD)
@@ -449,9 +451,9 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
         } $200..$209, $210..$215, $252..$254, $300..$316:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := core#REG_BANK_SEL
-            cmd_pkt.byte[2] := reg_nr >> 8              ' Use bank # encoded in nibble 2
+            cmd_pkt.byte[2] := reg_nr.byte[1] << core#USER_BANK ' Use bank # encoded in nibble 2
             cmd_pkt.byte[3] := SLAVE_WR
-            cmd_pkt.byte[4] := reg_nr & $ff             ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[4] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 3)
             i2c.start{}
