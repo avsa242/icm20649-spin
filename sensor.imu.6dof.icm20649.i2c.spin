@@ -73,6 +73,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
                 time.usleep(core#TPOR)                  ' Device startup delay
                 if i2c.present(SLAVE_WR)                ' Response from device?
                     if deviceid{} == core#DEVID_RESP    ' Verify device ID
+                        reset{}                         ' Restore default settings
                         return
 
     return FALSE                                        ' One of the above failed
@@ -85,6 +86,15 @@ PUB Stop{}
 
 PUB Defaults{}
 ' Set factory defaults
+    reset{}
+
+PUB PresetIMUActive 'XXX tentatively named
+' Preset settings:
+'   Accel active
+'   Gyro active
+'   Temp sensor active
+'   Auto clock source
+'   ODR: xxx Hz
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
 ' Enable data output for Accelerometer - per axis
