@@ -33,13 +33,13 @@ OBJ
     time    : "time"
     imu     : "sensor.imu.6dof.icm20649.i2c"
 
-PUB Main
+PUB Main{}
 
     setup{}
 
-    repeat
+    repeat{}
 
-PUB setup{}
+PUB Setup{}
 
     repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
     time.msleep(30)
