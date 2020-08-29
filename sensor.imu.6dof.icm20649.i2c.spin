@@ -351,6 +351,21 @@ PUB Interrupt{}: flag
 '   Returns TRUE if one or more interrupts asserted, FALSE if not
     flag := $00
 
+PUB Powered(state): curr_state
+' Enable device power
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value polls the chip and returns the current setting
+    curr_state := 0
+    readreg(core#PWR_MGMT_1, 1, @curr_state)
+    case ||(state)
+        0, 1:
+            state := (||(state) ^ 1) << core#SLEEP
+        other:
+            return ((curr_state >> core#SLEEP) & 1) == 0
+
+    state := (curr_state & core#SLEEP_MASK) | state
+    writereg(core#PWR_MGMT_1, 1, @state)
+
 PUB Reset{}
 ' Reset the device
 
