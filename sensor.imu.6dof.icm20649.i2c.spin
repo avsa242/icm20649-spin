@@ -97,10 +97,22 @@ PUB PresetIMUActive 'XXX tentatively named
 '   ODR: xxx Hz
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
-' Enable data output for Accelerometer - per axis
-'   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
+' Enable data output for accelerometer (all axes)
+'   Valid values: %000 (disable) or %001..%111 (enable), for all axes
 '   Any other value polls the chip and returns the current setting
+'   NOTE: All axes are affected. The xyz_mask parameter is used for
+'       compatibility with other IMU drivers.
     curr_mask := $00
+    readreg(core#PWR_MGMT_2, 1, @curr_mask)
+    case xyz_mask
+        %000:
+            xyz_mask := %111 << core#DISABLE_ACCEL      ' Chip logic is inverse
+        %001..%111:                                     ' If any bit is set,
+            xyz_mask := %000                            '   enable the accel
+        other:
+            curr_mask >>= core#DISABLE_ACCEL
+            curr_mask &= core#DISABLE_ACCEL_BITS
+            return (curr_mask ^ %111)
 
 PUB AccelBias(axbias, aybias, azbias, rw)
 ' Read or write/manually set accelerometer calibration offset values
