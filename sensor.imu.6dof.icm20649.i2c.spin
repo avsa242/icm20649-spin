@@ -366,8 +366,10 @@ PUB Powered(state): curr_state
     state := (curr_state & core#SLEEP_MASK) | state
     writereg(core#PWR_MGMT_1, 1, @state)
 
-PUB Reset{}
+PUB Reset{} | tmp
 ' Reset the device
+    tmp := 1 << core#DEVICE_RESET
+    writereg(core#PWR_MGMT_1, 1, @tmp)
 
 PUB Temperature{}: temp
 ' Get temperature from chip
