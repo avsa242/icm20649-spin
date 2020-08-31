@@ -114,36 +114,39 @@ PUB AccelAxisEnabled(xyz_mask): curr_mask
             curr_mask &= core#DISABLE_ACCEL_BITS
             return (curr_mask ^ %111)
 
-PUB AccelBias(axbias, aybias, azbias, rw)
+PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
 ' Read or write/manually set accelerometer calibration offset values
 '   Valid values:
-'       rw:
-'           R (0), W (1)
-'       axbias, aybias, azbias:
-'           -32768..32767
-'   NOTE: When rw is set to READ, axbias, aybias and azbias must be addresses of respective variables to hold the returned
-'       calibration offset values.
+'       When rw == W (1, write)
+'           ptr_x, ptr_y, ptr_z: -16384..16383
+'       When rw == R (0, read)
+'           ptr_x, ptr_y, ptr_z:
+'               Pointers to variables to hold current settings for respective axes
+'   NOTE: The ICM20649 accelerometer is pre-programmed with offsets, which may or may not be adequate for your application
+    readreg(core#XA_OFFS_H, 2, @tmp[X_AXIS])            ' Discrete reads because the three axes
+    readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])            '   aren't contiguous register pairs
+    readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
+
     case rw
+         W:
+            tc_bit[X_AXIS] := tmp[X_AXIS] & 1           ' LSB of each axis' data is a temperature compensation flag
+            tc_bit[Y_AXIS] := tmp[Y_AXIS] & 1
+            tc_bit[Z_AXIS] := tmp[Z_AXIS] & 1
+
+            ptr_x := (ptr_x & $FFFE) | tc_bit[X_AXIS]
+            ptr_y := (ptr_y & $FFFE) | tc_bit[Y_AXIS]
+            ptr_z := (ptr_z & $FFFE) | tc_bit[Z_AXIS]
+
+            writereg(core#XA_OFFS_H, 2, @ptr_x)
+            writereg(core#YA_OFFS_H, 2, @ptr_y)
+            writereg(core#ZA_OFFS_H, 2, @ptr_z)
+            return
         R:
-            long[axbias] := _abiasraw[X_AXIS]
-            long[aybias] := _abiasraw[Y_AXIS]
-            long[azbias] := _abiasraw[Z_AXIS]
-
-        W:
-            case axbias
-                -32768..32767:
-                    _abiasraw[X_AXIS] := axbias
-                OTHER:
-
-            case aybias
-                -32768..32767:
-                    _abiasraw[Y_AXIS] := aybias
-                OTHER:
-
-            case azbias
-                -32768..32767:
-                    _abiasraw[Z_AXIS] := azbias
-                OTHER:
+            long[ptr_x] := ~~tmp[X_AXIS]
+            long[ptr_y] := ~~tmp[Y_AXIS]
+            long[ptr_z] := ~~tmp[Z_AXIS]
+        other:
+            return
 
 PUB AccelClearInt{} | tmp
 ' Clears out any interrupts set up on the Accelerometer
@@ -152,11 +155,10 @@ PUB AccelClearInt{} | tmp
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
-    ' read raw accel data into @tmp
-    readreg(core#ACCEL_YOUT_H, 2, @tmp)
-'    long[ptr_x] := ~~tmp.word[X_AXIS]' - _abiasraw[X_AXIS]
-    long[ptr_y] := ~~tmp.word[X_AXIS]' - _abiasraw[Y_AXIS]
-'    long[ptr_z] := ~~tmp.word[Z_AXIS]' - _abiasraw[Z_AXIS]
+    readreg(core#ACCEL_XOUT_H, 6, @tmp)
+    long[ptr_x] := ~~tmp.word[2]
+    long[ptr_y] := ~~tmp.word[1]
+    long[ptr_z] := ~~tmp.word[0]
 
 PUB AccelDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
@@ -409,7 +411,7 @@ PUB XLGDataRate(Hz): curr_rate
 '   Any other value polls the chip and returns the current setting
     curr_rate := $00
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from the slave device
     case reg_nr                                         ' Basic register validation
         core#ACCEL_XOUT_H..core#TEMP_OUT_H:             ' Prioritize output data regs
@@ -435,7 +437,6 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr.byte[0]            ' Actual reg # is just the lower 8 bits
             i2c.start{}
-            repeat tmp from 0 to 1
             i2c.wr_block(@cmd_pkt, 2)
 
             i2c.start{}
@@ -455,7 +456,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
         i2c.wr_block(@cmd_pkt, 3)
         i2c.stop{}
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Write nr_bytes to the slave device
     case reg_nr                                         ' Basic reg. validation
         $003, $005, $006, $007, $00f..$013, $066..$069, $072, $076, $102,{
@@ -464,13 +465,15 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := core#REG_BANK_SEL
             cmd_pkt.byte[2] := reg_nr.byte[1] << core#USER_BANK ' Use bank # encoded in nibble 2
-            cmd_pkt.byte[3] := SLAVE_WR
-            cmd_pkt.byte[4] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 3)
+
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt.byte[3], 2)
-            repeat tmp from 0 to nr_bytes-1
+            i2c.wr_block(@cmd_pkt, 2)
+
+            repeat tmp from nr_bytes-1 to 0
                 i2c.write(byte[ptr_buff][tmp])
             i2c.stop{}
         other:
