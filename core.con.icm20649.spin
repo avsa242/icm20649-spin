@@ -5,7 +5,7 @@
     Description: Low-level constants
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Aug 28, 2020
+    Updated Aug 31, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -293,11 +293,8 @@ CON
     ODR_ALIGN_EN                = $209
     ODR_ALIGN_EN_MASK           = $01
 
-    ACCEL_SMPLRT_DIV_1          = $210
-    ACCEL_SMPLRT_DIV_1_MASK     = $0F
-
-    ACCEL_SMPLRT_DIV_2          = $211
-    ACCEL_SMPLRT_DIV_2_MASK     = $FF
+    ACCEL_SMPLRT_DIV            = $210  ' .. $211
+    ACCEL_SMPLRT_DIV_MASK       = $0FFF
 
     ACCEL_INTEL_CTRL            = $212
     ACCEL_INTEL_CTRL_MASK       = $03

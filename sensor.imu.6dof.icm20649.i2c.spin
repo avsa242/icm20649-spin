@@ -164,11 +164,19 @@ PUB AccelDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
     flag := $00
 
-PUB AccelDataRate(Hz): curr_hz
+PUB AccelDataRate(Hz): curr_Hz
 ' Set accelerometer output data rate, in Hz
-'   Valid values:
+'   Valid values: 1..1127
 '   Any other value polls the chip and returns the current setting
-    curr_hz := $00
+
+    case Hz
+        1..1127:
+            Hz := (1127 / Hz) - 1
+            writereg(core#ACCEL_SMPLRT_DIV, 2, @Hz)
+        other:
+            curr_Hz := 0
+            readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_Hz)
+            return 1127 / (curr_Hz + 1)
 
 PUB AccelDataReady{}: flag
 ' Accelerometer sensor new data available
