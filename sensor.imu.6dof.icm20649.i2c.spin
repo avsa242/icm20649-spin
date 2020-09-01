@@ -179,9 +179,9 @@ PUB AccelDataRate(Hz): curr_Hz
             return 1127 / (curr_Hz + 1)
 
 PUB AccelDataReady{}: flag
-' Accelerometer sensor new data available
-'   Returns TRUE or FALSE
-    flag := $00
+' Flag indicating new accelerometer data available
+'   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
+    return xlgdataready{}
 
 PUB AccelG(ax, ay, az) | tmpx, tmpy, tmpz
 ' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
@@ -418,6 +418,12 @@ PUB XLGDataRate(Hz): curr_rate
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
     curr_rate := $00
+
+PUB XLGDataReady{}: flag
+' Flag indicating new gyroscope/accelerometer data is ready to be read
+'   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
+    readreg(core#INT_STATUS_1, 1, @flag)
+    return (flag & %1) == 1
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from the slave device
