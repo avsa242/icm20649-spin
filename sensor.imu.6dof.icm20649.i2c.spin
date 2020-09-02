@@ -48,6 +48,10 @@ CON
     FIFO                    = 1
     STREAM                  = 2
 
+' Accelerometer operating modes
+    LOWPWR                  = 0
+    NORMAL                  = 1
+
 VAR
 
     word    _abiasraw[3], _gbiasraw[3]
@@ -194,6 +198,23 @@ PUB AccelInt{}: flag
 ' Flag indicating accelerometer interrupt asserted
 '   Returns TRUE if interrupt asserted, FALSE if not
     flag := $00
+
+PUB AccelOpMode(mode): curr_mode
+' Set accelerometer operating mode
+'   Valid values:
+'       LOWPWR (0): Low-power mode
+'       NORMAL (1): Normal operating mode
+'   Any other value polls the chip and returns the current setting
+    curr_mode := 0
+    readreg(core#LP_CONFIG, 1, @curr_mode)
+    case mode
+        LOWPWR, NORMAL:
+            mode <<= core#ACCEL_CYCLE
+        other:
+            return (curr_mode >> core#ACCEL_CYCLE) & %1
+
+    mode := (curr_mode & core#ACCEL_CYCLE_MASK) | mode
+    writereg(core#LP_CONFIG, 1, @mode)
 
 PUB AccelScale(g): curr_scale
 ' Sets the full-scale range of the Accelerometer, in g's
