@@ -49,8 +49,8 @@ CON
     STREAM                  = 2
 
 ' Accelerometer operating modes
-    LOWPWR                  = 0
-    NORMAL                  = 1
+    NORMAL                  = 0
+    LOWPWR                  = 1
 
 VAR
 
@@ -201,8 +201,8 @@ PUB AccelInt{}: flag
 PUB AccelOpMode(mode): curr_mode
 ' Set accelerometer operating mode
 '   Valid values:
-'       LOWPWR (0): Low-power mode
-'       NORMAL (1): Normal operating mode
+'       NORMAL (0): Normal operating mode
+'       LOWPWR (1): Low-power mode
 '   Any other value polls the chip and returns the current setting
     curr_mode := 0
     readreg(core#LP_CONFIG, 1, @curr_mode)
