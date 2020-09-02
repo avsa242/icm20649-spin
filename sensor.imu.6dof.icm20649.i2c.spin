@@ -55,7 +55,7 @@ CON
 VAR
 
     word    _abiasraw[3], _gbiasraw[3]
-    word    _ares, _gres, _ascale
+    word    _ares, _gres
 OBJ
 
     i2c : "com.i2c"                                     ' PASM I2C Driver
@@ -91,6 +91,7 @@ PUB Stop{}
 PUB Defaults{}
 ' Set factory defaults
     reset{}
+    accelscale(4)
 
 PUB PresetIMUActive 'XXX tentatively named
 ' Preset settings:
@@ -224,7 +225,7 @@ PUB AccelScale(g): curr_scl
     case g
         4, 8, 16, 30:
             g := lookdownz(g: 4, 8, 16, 30) << core#ACCEL_FS_SEL
-            _ascale := lookupz(g >> core#ACCEL_FS_SEL: 122, 244, 488, 965)
+            _ares := lookupz(g >> core#ACCEL_FS_SEL: 0_000122, 0_000244, 0_000488, 0_000976)
             ' 1/8192 (LSB per g), 1/4096, 1/2048, 1/1024 * 1_000_000
         other:
             curr_scl := (curr_scl >> core#ACCEL_FS_SEL) & core#ACCEL_FS_SEL_BITS
