@@ -304,28 +304,28 @@ CON
     ACCEL_WOM_THR               = $213
     ACCEL_WOM_THR_MASK          = $FF
 
-    ACCEL_CONFIG                = $214
-    ACCEL_CONFIG_MASK           = $3F
+    ACCEL_CFG                   = $214
+    ACCEL_CFG_MASK              = $3F
         ACCEL_DLPFCFG           = 3
         ACCEL_FS_SEL            = 1
         ACCEL_FCHOICE           = 0
         ACCEL_DLPFCFG_BITS      = %111
         ACCEL_FS_SEL_BITS       = %11
-        ACCEL_DLPFCFG_MASK      = (ACCEL_DLPFCFG_BITS << ACCEL_DLPFCFG) ^ ACCEL_CONFIG_MASK
-        ACCEL_FS_SEL_MASK       = (ACCEL_FS_SEL_BITS << ACCEL_DLPFCFG) ^ ACCEL_CONFIG_MASK
-        ACCEL_FCHOICE_MASK      = 1 ^ ACCEL_CONFIG_MASK
+        ACCEL_DLPFCFG_MASK      = (ACCEL_DLPFCFG_BITS << ACCEL_DLPFCFG) ^ ACCEL_CFG_MASK
+        ACCEL_FS_SEL_MASK       = (ACCEL_FS_SEL_BITS << ACCEL_DLPFCFG) ^ ACCEL_CFG_MASK
+        ACCEL_FCHOICE_MASK      = 1 ^ ACCEL_CFG_MASK
 
-    ACCEL_CONFIG_2              = $215
-    ACCEL_CONFIG_2_MASK         = $1F
+    ACCEL_CFG_2                 = $215
+    ACCEL_CFG_2_MASK            = $1F
         AX_ST_EN_REG            = 4
         AY_ST_EN_REG            = 3
         AZ_ST_EN_REG            = 2
         DEC3_CFG                = 0
         DEC3_CFG_BITS           = %11
-        AX_ST_EN_REG_MASK       = (1 << AX_ST_EN_REG) ^ ACCEL_CONFIG_2_MASK
-        AY_ST_EN_REG_MASK       = (1 << AY_ST_EN_REG) ^ ACCEL_CONFIG_2_MASK
-        AZ_ST_EN_REG_MASK       = (1 << AZ_ST_EN_REG) ^ ACCEL_CONFIG_2_MASK
-        DEC3_CFG_MASK           = DEC3_CFG_BITS ^ ACCEL_CONFIG_2_MASK
+        AX_ST_EN_REG_MASK       = (1 << AX_ST_EN_REG) ^ ACCEL_CFG_2_MASK
+        AY_ST_EN_REG_MASK       = (1 << AY_ST_EN_REG) ^ ACCEL_CFG_2_MASK
+        AZ_ST_EN_REG_MASK       = (1 << AZ_ST_EN_REG) ^ ACCEL_CFG_2_MASK
+        DEC3_CFG_MASK           = DEC3_CFG_BITS ^ ACCEL_CFG_2_MASK
 
     FSYNC_CONFIG                = $252
     FSYNC_CONFIG_MASK           = $BF
