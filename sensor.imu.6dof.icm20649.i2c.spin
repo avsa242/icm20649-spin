@@ -55,7 +55,7 @@ CON
 VAR
 
     word    _abiasraw[3], _gbiasraw[3]
-    word    _ares, _gres
+    word    _ares, _gres, _ascale
 OBJ
 
     i2c : "com.i2c"                                     ' PASM I2C Driver
@@ -172,7 +172,6 @@ PUB AccelDataRate(Hz): curr_Hz
 ' Set accelerometer output data rate, in Hz
 '   Valid values: 1..1127
 '   Any other value polls the chip and returns the current setting
-
     case Hz
         1..1127:
             Hz := (1127 / Hz) - 1
@@ -216,11 +215,23 @@ PUB AccelOpMode(mode): curr_mode
     mode := (curr_mode & core#ACCEL_CYCLE_MASK) | mode
     writereg(core#LP_CONFIG, 1, @mode)
 
-PUB AccelScale(g): curr_scale
-' Sets the full-scale range of the Accelerometer, in g's
-'   Valid values:
+PUB AccelScale(g): curr_scl
+' Set accelerometer full-scale range, in g's
+'   Valid values: *4, 8, 16, 30
 '   Any other value polls the chip and returns the current setting
-    curr_scale := $00
+    curr_scl := 0
+    readreg(core#ACCEL_CFG, 1, @curr_scl)
+    case g
+        4, 8, 16, 30:
+            g := lookdownz(g: 4, 8, 16, 30) << core#ACCEL_FS_SEL
+            _ascale := lookupz(g >> core#ACCEL_FS_SEL: 122, 244, 488, 965)
+            ' 1/8192 (LSB per g), 1/4096, 1/2048, 1/1024 * 1_000_000
+        other:
+            curr_scl := (curr_scl >> core#ACCEL_FS_SEL) & core#ACCEL_FS_SEL_BITS
+            return lookupz(curr_scl: 4, 8, 16, 30)
+
+    g := ((curr_scl & core#ACCEL_FS_SEL_MASK) | g) & core#ACCEL_CFG_MASK
+    writereg(core#ACCEL_CFG, 1, @g)
 
 PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
 ' Calibrate the accelerometer
