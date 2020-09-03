@@ -8,7 +8,12 @@ This is a P8X32A/Propeller, ~~P2X8C4M64P/Propeller 2~~ driver object for the ICM
 ## Salient Features
 
 * I2C connection at up to 400kHz
-* Feature 2
+* Read accelerometer (raw, micro-g's), gyroscope (raw, micro-dps)
+* Set accel, gyro full-scale
+* Data-ready flag
+* Set bias offsets (manual, automatic)
+* Set output data rates
+* Set optional accel/gyro data low-pass filter
 
 ## Requirements
 
@@ -22,7 +27,7 @@ P1/SPIN1:
 ## Compiler Compatibility
 
 * P1/SPIN1: OpenSpin (tested with 1.00.81)
-* ~~P2/SPIN2: FastSpin (tested with 4.3.1)~~
+* ~~P2/SPIN2: FastSpin (tested with 4.3.1)~~ _(not implemented yet)_
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
@@ -33,5 +38,6 @@ P1/SPIN1:
 
 ## TODO
 
-- [ ] Implement gyro methods
+- [x] Implement gyro methods
 - [ ] Implement FIFO methods
+
