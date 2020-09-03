@@ -256,38 +256,45 @@ PUB AccelScale(g): curr_scl
     g := ((curr_scl & core#ACCEL_FS_SEL_MASK) | g) & core#ACCEL_CFG_MASK
     writereg(core#ACCEL_CFG, 1, @g)
 
-PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
+PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias[3], orig_scale, orig_datarate, orig_lpf
 ' Calibrate the accelerometer
 '   NOTE: The accelerometer must be oriented with the package top facing up for this method to be successful
-    tmpx := tmpy := tmpz := axis := samples := 0
-    longfill(@tmpbiasraw, 0, 3)
-    accelbias(0, 0, 0, W)
+    longfill(@tmpx, 0, 14)                                  ' Initialize variables to 0
+    orig_scale := accelscale(-2)                            ' Preserve the user's original settings
+    orig_datarate := acceldatarate(-2)
+    orig_lpf := accellowpassfilter(-2)
 
-    accelscale(0)       ' Set according to datasheet/AN recommendations
-    acceldatarate(0)
+    accelscale(4)                                           ' Set accel to most sensitive scale,
+    acceldatarate(1172)                                     '   fastest sample rate,
+    accellowpassfilter(111)                                 '   and a low-pass filter of 111Hz
 
-    fifoenabled(TRUE)   ' Use the FIFO, if it exists
-    fifomode(FIFO)
-    fifothreshold (0)  ' Set according to datasheet/AN recommendations
-    samples := fifothreshold(-2)
-    repeat until fifofull{}
+                                                            ' ICM20649 accel has factory bias offsets,
+                                                            '   so read them in first
+    accelbias(@factory_bias[X_AXIS], @factory_bias[Y_AXIS], @factory_bias[Z_AXIS], 0)
+
+    samples := 40                                           ' # samples to use for averaging
 
     repeat samples
-' Read the accel data stored in the FIFO
+        repeat until acceldataready
         acceldata(@tmpx, @tmpy, @tmpz)
-        tmpbiasraw[X_AXIS] += tmpx
-        tmpbiasraw[Y_AXIS] += tmpy
-        tmpbiasraw[Z_AXIS] += tmpz - (1_000_000 / _ares) ' Assumes sensor facing up!
+        tmpbias[X_AXIS] += tmpx
+        tmpbias[Y_AXIS] += tmpy
+        tmpbias[Z_AXIS] += tmpz - (1_000_000 / _ares)       ' Assumes sensor facing up!
 
-    accelbias(tmpbiasraw[X_AXIS]/samples, tmpbiasraw[Y_AXIS]/samples, tmpbiasraw[Z_AXIS]/samples, W)
+    repeat axis from X_AXIS to Z_AXIS
+        tmpbias[axis] /= samples
+        tmpbias[axis] := (factory_bias[axis] - (tmpbias[axis]/8))
 
-    fifoenabled(FALSE)
-    fifomode(BYPASS)
+    accelbias(tmpbias[X_AXIS], tmpbias[Y_AXIS], tmpbias[Z_AXIS], W)
 
-PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
+    accelscale(orig_scale)                                  ' Restore user settings
+    acceldatarate(orig_datarate)
+    accellowpassfilter(orig_lpf)
+
+PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples
 ' Calibrate the gyroscope
     tmpx := tmpy := tmpz := axis := samples := 0
-    longfill(@tmpbiasraw, 0, 3)
+    longfill(@tmpbias, 0, 3)
     gyrobias(0, 0, 0, W)
 
     gyroscale(0)       ' Set according to datasheet/AN recommendations
@@ -302,11 +309,11 @@ PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
     repeat samples
 ' Read the accel data stored in the FIFO
         gyrodata(@tmpx, @tmpy, @tmpz)
-        tmpbiasraw[X_AXIS] += tmpx
-        tmpbiasraw[Y_AXIS] += tmpy
-        tmpbiasraw[Z_AXIS] += tmpz
+        tmpbias[X_AXIS] += tmpx
+        tmpbias[Y_AXIS] += tmpy
+        tmpbias[Z_AXIS] += tmpz
 
-    gyrobias(tmpbiasraw[X_AXIS]/samples, tmpbiasraw[Y_AXIS]/samples, tmpbiasraw[Z_AXIS]/samples, W)
+    gyrobias(tmpbias[X_AXIS]/samples, tmpbias[Y_AXIS]/samples, tmpbias[Z_AXIS]/samples, W)
 
     fifoenabled(FALSE)
     fifomode(BYPASS)
