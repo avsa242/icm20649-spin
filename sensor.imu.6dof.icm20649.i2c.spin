@@ -123,6 +123,9 @@ PUB AccelAxisEnabled(xyz_mask): curr_mask
             curr_mask &= core#DISABLE_ACCEL_BITS
             return (curr_mask ^ %111)
 
+    xyz_mask := (curr_mask & core#DISABLE_ACCEL_MASK) | xyz_mask
+    writereg(core#PWR_MGMT_2, 1, @xyz_mask)
+
 PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
 ' Read or write/manually set accelerometer calibration offset values
 '   Valid values:
@@ -355,14 +358,24 @@ PUB FIFOUnreadSamples: nr_samples
     nr_samples := $00
 
 PUB GyroAxisEnabled(xyz_mask): curr_mask
-' Enable data output for Gyroscope - per axis
-'   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
+' Enable data output for gyroscope (all axes)
+'   Valid values: %000 (disable) or %001..%111 (enable), for all axes
 '   Any other value polls the chip and returns the current setting
+'   NOTE: All axes are affected. The xyz_mask parameter is used for
+'       compatibility with other IMU drivers.
     curr_mask := $00
+    readreg(core#PWR_MGMT_2, 1, @curr_mask)
     case xyz_mask
-        %000..%111:
-        OTHER:
-            return
+        %000:
+            xyz_mask := %111                            ' Chip logic is inverse
+        %001..%111:                                     ' If any bit is set,
+            xyz_mask := %000                            '   enable the gyro
+        other:
+            curr_mask &= core#DISABLE_GYRO_BITS
+            return (curr_mask ^ %111)
+
+    xyz_mask := (curr_mask & core#DISABLE_GYRO_MASK) | xyz_mask
+    writereg(core#PWR_MGMT_2, 1, @xyz_mask)
 
 PUB GyroBias(gxbias, gybias, gzbias, rw)
 ' Read or write/manually set Gyroscope calibration offset values
