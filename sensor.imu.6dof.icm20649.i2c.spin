@@ -92,10 +92,10 @@ PUB Defaults{}
 ' Set factory defaults
     reset{}
     accelscale(4)
+    gyroscale(500)
 
 PUB PresetIMUActive 'XXX tentatively named
 ' Preset settings:
-'   Gyro active
 '   Temp sensor active
 '   Auto clock source
 '   ODR: xxx Hz
@@ -104,6 +104,9 @@ PUB PresetIMUActive 'XXX tentatively named
     accelaxisenabled(%111)
     acceldatarate(1127)
     accellowpassfilter(50)
+    gyroaxisenabled(%111)
+    gyrodatarate(1100)
+    gyrolowpassfilter(51)
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
 ' Enable data output for accelerometer (all axes)
