@@ -427,9 +427,10 @@ PUB GyroDataRate(Hz): curr_rate
             return 1100 / (curr_rate + 1)
 
 PUB GyroDataReady{}: flag
-' Gyroscope sensor new data available
-'   Returns TRUE or FALSE
+' Flag indicating new gyroscope data available
+'   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
     flag := $00
+    return xlgdataready{}
 
 PUB GyroDPS(gx, gy, gz) | tmp[3]
 ' Read the Gyroscope output registers and scale the outputs to micro-degrees of rotation per second (1_000_000 = 1.000000 deg/sec)
