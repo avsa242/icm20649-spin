@@ -298,32 +298,32 @@ PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias
     acceldatarate(orig_datarate)
     accellowpassfilter(orig_lpf)
 
-PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples
+PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples, orig_scale, orig_datarate, orig_lpf
 ' Calibrate the gyroscope
-    tmpx := tmpy := tmpz := axis := samples := 0
-    longfill(@tmpbias, 0, 3)
-    gyrobias(0, 0, 0, W)
+    longfill(@tmpx, 0, 8)                                   ' Initialize variables to 0
+    orig_scale := gyroscale(-2)                             ' Preserve the user's original settings
+    orig_datarate := gyrodatarate(-2)
+    orig_lpf := gyrolowpassfilter(-2)
 
-    gyroscale(0)       ' Set according to datasheet/AN recommendations
-    gyrodatarate(0)
+    gyroscale(500)                                          ' Set gyro to most sensitive scale,
+    gyrodatarate(1100)                                      '   fastest sample rate,
+    gyrolowpassfilter(197)                                  '   and a low-pass filter of 197Hz
+    gyrobias(0, 0, 0, W)                                    ' Reset gyroscope bias offsets
+    samples := 40                                           ' # samples to use for average
 
-    fifoenabled(TRUE)   ' Use the FIFO, if it exists
-    fifomode(FIFO)
-    fifothreshold (0)  ' Set according to datasheet/AN recommendations
-    samples := fifothreshold(-2)
-    repeat until fifofull{}
-
-    repeat samples
-' Read the accel data stored in the FIFO
+    repeat samples                                          ' Accumulate samples to be averaged
+        repeat until gyrodataready
         gyrodata(@tmpx, @tmpy, @tmpz)
-        tmpbias[X_AXIS] += tmpx
-        tmpbias[Y_AXIS] += tmpy
-        tmpbias[Z_AXIS] += tmpz
+        tmpbiasraw[X_AXIS] -= tmpx                          ' Bias offsets are _added_ by the chip, so
+        tmpbiasraw[Y_AXIS] -= tmpy                          '   negate the samples
+        tmpbiasraw[Z_AXIS] -= tmpz
 
-    gyrobias(tmpbias[X_AXIS]/samples, tmpbias[Y_AXIS]/samples, tmpbias[Z_AXIS]/samples, W)
+                                                            ' Write offsets to sensor (scaled to expected range)
+    gyrobias((tmpbiasraw[X_AXIS]/samples) / 4, (tmpbiasraw[Y_AXIS]/samples) / 4, (tmpbiasraw[Z_AXIS]/samples) / 4, W)
 
-    fifoenabled(FALSE)
-    fifomode(BYPASS)
+    gyroscale(orig_scale)                                   ' Restore user settings
+    gyrodatarate(orig_datarate)
+    gyrolowpassfilter(orig_lpf)
 
 PUB DeviceID{}: id
 ' Read device identification
