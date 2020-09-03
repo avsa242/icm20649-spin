@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Sep 3, 2020
+    Updated Aug 29, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -99,10 +99,11 @@ PUB PresetIMUActive 'XXX tentatively named
 '   Temp sensor active
 '   Auto clock source
 '   ODR: xxx Hz
-    imu.powered(true)
-    imu.accelopmode(NORMAL)
-    imu.accelaxisenabled(%111)
-    imu.acceldatarate(1127)
+    powered(true)
+    accelopmode(NORMAL)
+    accelaxisenabled(%111)
+    acceldatarate(1127)
+    accellowpassfilter(50)
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
 ' Enable data output for accelerometer (all axes)
