@@ -40,4 +40,4 @@ P1/SPIN1:
 
 - [x] Implement gyro methods
 - [ ] Implement FIFO methods
-
+- [ ] P2/SPIN2 support
