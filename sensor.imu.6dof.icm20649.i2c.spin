@@ -377,36 +377,28 @@ PUB GyroAxisEnabled(xyz_mask): curr_mask
     xyz_mask := (curr_mask & core#DISABLE_GYRO_MASK) | xyz_mask
     writereg(core#PWR_MGMT_2, 1, @xyz_mask)
 
-PUB GyroBias(gxbias, gybias, gzbias, rw)
-' Read or write/manually set Gyroscope calibration offset values
+PUB GyroBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
+' Read or write/manually set gyroscope calibration offset values
 '   Valid values:
-'       rw:
-'           R (0), W (1)
-'       gxbias, gybias, gzbias:
-'           -32768..32767
-'   NOTE: When rw is set to READ, gxbias, gybias and gzbias must be addresses of respective variables to hold the returned calibration offset values.
+'       When rw == W (1, write)
+'           ptr_x, ptr_y, ptr_z: -32768..32767
+'       When rw == R (0, read)
+'           ptr_x, ptr_y, ptr_z:
+'               Pointers to variables to hold current settings for respective axes
     case rw
+         W:
+            writereg(core#XG_OFFS_USRH, 2, @ptr_x)
+            writereg(core#YG_OFFS_USRH, 2, @ptr_y)
+            writereg(core#ZG_OFFS_USRH, 2, @ptr_z)
+            return
         R:
-            long[gxbias] := _gbiasraw[X_AXIS]
-            long[gybias] := _gbiasraw[Y_AXIS]
-            long[gzbias] := _gbiasraw[Z_AXIS]
-
-        W:
-            case gxbias
-                -32768..32767:
-                    _gbiasraw[X_AXIS] := gxbias
-                OTHER:
-
-            case gybias
-                -32768..32767:
-                    _gbiasraw[Y_AXIS] := gybias
-                OTHER:
-
-            case gzbias
-                -32768..32767:
-                    _gbiasraw[Z_AXIS] := gzbias
-                OTHER:
-        OTHER:
+            readreg(core#XG_OFFS_USRH, 2, @tmp[X_AXIS])
+            readreg(core#YG_OFFS_USRH, 2, @tmp[Y_AXIS])
+            readreg(core#ZG_OFFS_USRH, 2, @tmp[Z_AXIS])
+            long[ptr_x] := ~~tmp[X_AXIS]
+            long[ptr_y] := ~~tmp[Y_AXIS]
+            long[ptr_z] := ~~tmp[Z_AXIS]
+        other:
             return
 
 PUB GyroClearInt{} | tmp
