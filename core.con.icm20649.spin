@@ -260,28 +260,28 @@ CON
 ' User bank 2
     GYRO_SMPLRT_DIV             = $200
 
-    GYRO_CONFIG_1               = $201
-    GYRO_CONFIG_1_MASK          = $3F
+    GYRO_CFG1                   = $201
+    GYRO_CFG1_MASK              = $3F
         GYRO_DLPFCFG            = 3
         GYRO_FS_SEL             = 1
         GYRO_FCHOICE            = 0
         GYRO_DLPFCFG_BITS       = %111
         GYRO_FS_SEL_BITS        = %11
-        GYRO_DLPFCFG_MASK       = (GYRO_DLPFCFG_BITS << GYRO_DLPFCFG) ^ GYRO_CONFIG_1_MASK
-        GYRO_FS_SEL_MASK        = (GYRO_FS_SEL_BITS << GYRO_DLPFCFG) ^ GYRO_CONFIG_1_MASK
-        GYRO_FCHOICE_MASK       = 1 ^ GYRO_CONFIG_1_MASK
+        GYRO_DLPFCFG_MASK       = (GYRO_DLPFCFG_BITS << GYRO_DLPFCFG) ^ GYRO_CFG1_MASK
+        GYRO_FS_SEL_MASK        = (GYRO_FS_SEL_BITS << GYRO_DLPFCFG) ^ GYRO_CFG1_MASK
+        GYRO_FCHOICE_MASK       = 1 ^ GYRO_CFG1_MASK
 
-    GYRO_CONFIG_2               = $202
-    GYRO_CONFIG_2_MASK          = $3F
+    GYRO_CFG2                   = $202
+    GYRO_CFG2_MASK              = $3F
         XGYRO_CTEN              = 5
         YGYRO_CTEN              = 4
         ZGYRO_CTEN              = 3
         GYRO_AVGCFG             = 0
         GYRO_AVGCFG_BITS        = %111
-        XGYRO_CTEN_MASK         = (1 << XGYRO_CTEN) ^ GYRO_CONFIG_2_MASK
-        YGYRO_CTEN_MASK         = (1 << YGYRO_CTEN) ^ GYRO_CONFIG_2_MASK
-        ZGYRO_CTEN_MASK         = (1 << ZGYRO_CTEN) ^ GYRO_CONFIG_2_MASK
-        GYRO_AVGCFG_MASK        = GYRO_AVGCFG_BITS ^ GYRO_CONFIG_2_MASK
+        XGYRO_CTEN_MASK         = (1 << XGYRO_CTEN) ^ GYRO_CFG2_MASK
+        YGYRO_CTEN_MASK         = (1 << YGYRO_CTEN) ^ GYRO_CFG2_MASK
+        ZGYRO_CTEN_MASK         = (1 << ZGYRO_CTEN) ^ GYRO_CFG2_MASK
+        GYRO_AVGCFG_MASK        = GYRO_AVGCFG_BITS ^ GYRO_CFG2_MASK
 
     XG_OFFS_USRH                = $203
     XG_OFFS_USRL                = $204

@@ -452,11 +452,22 @@ PUB GyroIntSelect(mode): curr_mode
 '   Any other value polls the chip and returns the current setting
     curr_mode := $00
 
-PUB GyroScale(scale): curr_scale
-' Set full scale of gyroscope output, in degrees per second (dps)
-'   Valid values:
+PUB GyroScale(dps): curr_scl
+' Set gyroscope full-scale range, in degrees per second
+'   Valid values: *500, 1000, 2000, 4000
 '   Any other value polls the chip and returns the current setting
-    curr_scale := $00
+    curr_scl := 0
+    readreg(core#GYRO_CFG1, 1, @curr_scl)
+    case dps
+        500, 1000, 2000, 4000:
+            dps := lookdownz(dps: 500, 1000, 2000, 4000) << core#GYRO_FS_SEL
+            _gres := lookupz(dps >> core#GYRO_FS_SEL: 15_267, 30_487, 60_975, 121_951)    ' 1/65.5, 1/32.8, 1/16.4, 1/8.2 LSB/dps * 1_000_000
+        other:
+            curr_scl := (curr_scl >> core#GYRO_FS_SEL) & core#GYRO_FS_SEL_BITS
+            return lookupz(curr_scl: 500, 1000, 2000, 4000)
+
+    dps := ((curr_scl & core#GYRO_FS_SEL_MASK) | dps) & core#GYRO_CFG1_MASK
+    writereg(core#GYRO_CFG1, 1, @dps)
 
 PUB Interrupt{}: flag
 ' Flag indicating one or more interrupts asserted
