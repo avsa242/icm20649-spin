@@ -199,6 +199,28 @@ PUB AccelInt{}: flag
 '   Returns TRUE if interrupt asserted, FALSE if not
     flag := $00
 
+PUB AccelLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
+' Set accelerometer output data low-pass filter cutoff frequency, in Hz
+'   Valid values: 6, 12, 24, 50, 111, 246, 473
+'   Any other value polls the chip and returns the current setting
+    curr_setting := lpf_enable := 0
+    readreg(core#ACCEL_CFG, 1, @curr_setting)
+    case cutoff_Hz
+        0:                                                  ' Disable/bypass the LPF
+            lpf_enable := %0
+        6, 12, 24, 50, 111, 246, 473:
+            cutoff_Hz := lookdown(cutoff_Hz: 246, 111, 50, 24, 12, 6, 473) << core#ACCEL_DLPFCFG
+            lpf_enable := %1
+        other:
+            if (curr_setting & %1) <> 1                     ' The LPF bypass bit is set, so
+                return 0                                    '   return 0 (LPF bypassed/disabled)
+            else
+                curr_setting := (curr_setting >> core#ACCEL_DLPFCFG) & core#ACCEL_DLPFCFG_BITS
+                return lookup(curr_setting: 246, 111, 50, 24, 12, 6, 473)
+
+    cutoff_Hz := (curr_setting & core#ACCEL_DLPFCFG_MASK & core#ACCEL_FCHOICE_MASK) | cutoff_Hz | lpf_enable
+    writereg(core#ACCEL_CFG, 1, @cutoff_Hz)
+
 PUB AccelOpMode(mode): curr_mode
 ' Set accelerometer operating mode
 '   Valid values:
