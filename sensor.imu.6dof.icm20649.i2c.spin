@@ -452,6 +452,28 @@ PUB GyroIntSelect(mode): curr_mode
 '   Any other value polls the chip and returns the current setting
     curr_mode := $00
 
+PUB GyroLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
+' Set gyroscope output data low-pass filter cutoff frequency, in Hz
+'   Valid values: 6, 12, 24, 51, 120, 152, 197, 361, *12106 (LPF disabled)
+'   Any other value polls the chip and returns the current setting
+    curr_setting := lpf_enable := 0
+    readreg(core#GYRO_CFG1, 1, @curr_setting)
+    case cutoff_Hz
+        0, 12106:                                           ' Disable/bypass the LPF
+            lpf_enable := %0
+        6, 12, 24, 51, 120, 152, 197, 361:
+            cutoff_Hz := lookdownz(cutoff_Hz: 197, 152, 120, 51, 24, 12, 6, 361) << core#GYRO_DLPFCFG
+            lpf_enable := %1
+        other:
+            if (curr_setting & %1) <> 1                     ' The LPF bypass bit is clear, so
+                return 12106                                '   return 12106 (LPF bypassed/disabled)
+            else
+                curr_setting := (curr_setting >> core#GYRO_DLPFCFG) & core#GYRO_DLPFCFG_BITS
+                return lookupz(curr_setting: 197, 152, 120, 51, 24, 12, 6, 361)
+
+    cutoff_Hz := (curr_setting & core#GYRO_DLPFCFG_MASK & core#GYRO_FCHOICE_MASK) | cutoff_Hz | lpf_enable
+    writereg(core#GYRO_CFG1, 1, @cutoff_Hz)
+
 PUB GyroScale(dps): curr_scl
 ' Set gyroscope full-scale range, in degrees per second
 '   Valid values: *500, 1000, 2000, 4000
@@ -461,7 +483,8 @@ PUB GyroScale(dps): curr_scl
     case dps
         500, 1000, 2000, 4000:
             dps := lookdownz(dps: 500, 1000, 2000, 4000) << core#GYRO_FS_SEL
-            _gres := lookupz(dps >> core#GYRO_FS_SEL: 15_267, 30_487, 60_975, 121_951)    ' 1/65.5, 1/32.8, 1/16.4, 1/8.2 LSB/dps * 1_000_000
+            _gres := lookupz(dps >> core#GYRO_FS_SEL: 15_267, 30_487, 60_975, 121_951)
+            ' _gres: (1/65.5, 1/32.8, 1/16.4, 1/8.2) = LSB/dps * 1_000_000
         other:
             curr_scl := (curr_scl >> core#GYRO_FS_SEL) & core#GYRO_FS_SEL_BITS
             return lookupz(curr_scl: 500, 1000, 2000, 4000)
