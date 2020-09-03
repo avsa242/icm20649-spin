@@ -414,10 +414,17 @@ PUB GyroData(gx, gy, gz) | tmp[2]
     long[gz] := ~~tmp.word[0]
 
 PUB GyroDataRate(Hz): curr_rate
-' Set Gyroscope Output Data Rate, in Hz
-'   Valid values:
+' Set gyroscope output data rate, in Hz
+'   Valid values: 1..1100
 '   Any other value polls the chip and returns the current setting
-    curr_rate := $00
+    case Hz
+        1..1100:
+            Hz := (1100 / Hz) - 1
+            writereg(core#GYRO_SMPLRT_DIV, 1, @Hz)
+        other:
+            curr_rate := 0
+            readreg(core#GYRO_SMPLRT_DIV, 1, @curr_rate)
+            return 1100 / (curr_rate + 1)
 
 PUB GyroDataReady{}: flag
 ' Gyroscope sensor new data available
