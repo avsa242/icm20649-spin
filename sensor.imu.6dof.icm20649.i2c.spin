@@ -408,9 +408,10 @@ PUB GyroClearInt{} | tmp
 PUB GyroData(gx, gy, gz) | tmp[2]
 ' Reads the Gyroscope output registers
     tmp := $00
-    long[gx] := ~~tmp.word[X_AXIS] - _gbiasraw[X_AXIS]
-    long[gy] := ~~tmp.word[Y_AXIS] - _gbiasraw[Y_AXIS]
-    long[gz] := ~~tmp.word[Z_AXIS] - _gbiasraw[Z_AXIS]
+    readreg(core#GYRO_XOUT_H, 6, @tmp)
+    long[gx] := ~~tmp.word[2]
+    long[gy] := ~~tmp.word[1]
+    long[gz] := ~~tmp.word[0]
 
 PUB GyroDataRate(Hz): curr_rate
 ' Set Gyroscope Output Data Rate, in Hz
