@@ -29,6 +29,9 @@ CON
     DAT_Y_COL   = DAT_X_COL + 15
     DAT_Z_COL   = DAT_Y_COL + 15
 
+    C           = 0
+    F           = 1
+
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
@@ -43,20 +46,21 @@ PUB Main{} | dispmode
     setup{}
 
     imu.accellowpassfilter(50)                              ' 6, 12, 24, 50, 111, 246, 473
-    imu.acceldatarate(20)                                   ' 1..1121
+    imu.acceldatarate(100)                                  ' 1..1121
     imu.accelscale(4)                                       ' 4, 8, 16, 30 (g's)
     imu.accelaxisenabled(%111)                              ' 0: disable, %001..%111: enable (all axes)
 
     imu.gyrolowpassfilter(51)                               ' 6, 12, 24, 51, 120, 152, 197, 361, 12106 (disable LPF)
-    imu.gyrodatarate(20)                                    ' 1..1100
+    imu.gyrodatarate(100)                                   ' 1..1100
     imu.gyroscale(500)                                      ' 500, 1000, 2000, 4000
     imu.gyroaxisenabled(%111)                               ' 0: disable, %001..%111: enable (all axes)
     imu.gyrobias(0, 0, 0, 1)                                ' x, y, z: -32768..32767, rw = 1 (write)
 
+    imu.tempscale(C)                                        ' C (0), F (1)
+
     ser.hidecursor{}
     dispmode := 0
     displaysettings{}
-
     repeat
         case ser.rxcheck{}
             "q", "Q":                                       ' Quit the demo
@@ -79,10 +83,12 @@ PUB Main{} | dispmode
                 ser.position(0, 14)
                 accelraw{}
                 gyroraw{}
+                temp{}
             1:
                 ser.position(0, 14)
                 accelcalc{}
                 gyrocalc{}
+                temp{}
 
     ser.showcursor{}
     flashled(LED, 100)
@@ -142,6 +148,13 @@ PUB GyroRaw{} | gx, gy, gz
     ser.str (int.decpadded (gz, 7))
     ser.clearline{}
     ser.newline{}
+
+PUB Temp{}
+
+    ser.str(string("Temp:"))
+    ser.position(DAT_X_COL, 16)
+'    ser.str(int.decpadded(imu.temperature{}, 5))
+    decimal(imu.temperature{}, 1_00)
 
 PUB Calibrate{}
 

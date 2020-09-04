@@ -57,10 +57,16 @@ CON
     AUTO                    = 1
     CLKSTOP                 = 7
 
+' Temperature scales
+    C                       = 0
+    F                       = 1
+
 VAR
 
     word    _abiasraw[3], _gbiasraw[3]
-    word    _ares, _gres
+    word    _ares, _gres, _temp_scale
+    byte    _roomtemp_offs
+
 OBJ
 
     i2c : "com.i2c"                                     ' PASM I2C Driver
@@ -98,6 +104,7 @@ PUB Defaults{}
     reset{}
     accelscale(4)
     gyroscale(500)
+    tempscale(C)
 
 PUB PresetIMUActive 'XXX tentatively named
 ' Preset settings:
@@ -111,6 +118,7 @@ PUB PresetIMUActive 'XXX tentatively named
     gyroaxisenabled(%111)
     gyrodatarate(1100)
     gyrolowpassfilter(51)
+    tempscale(C)
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
 ' Enable data output for accelerometer (all axes)
@@ -540,15 +548,39 @@ PUB Reset{} | tmp
     tmp := 1 << core#DEVICE_RESET
     writereg(core#PWR_MGMT_1, 1, @tmp)
 
-PUB Temperature{}: temp
-' Get temperature from chip
-'   Returns: Temperature in hundredths of a degree Celsius (1000 = 10.00 deg C)
-    temp := $00
-
 PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
     flag := $00
+
+PUB Temperature{}: temp
+' Read temperature, in hundredths of a degree
+    temp := 0
+    readreg(core#TEMP_OUT_H, 2, @temp)
+    temp := (( (temp-_roomtemp_offs) * 1_0000) / 333_87) + 21_00 'XXX unverified
+    case _temp_scale
+        F:
+            return (temp * 9_00 / 5_00) + 32_00
+        other:
+            return
+
+PUB TempOffset(u8)
+' Set room temperature offset for Temperature()
+'   Valid values: 0..255
+'   Any other value is clamped to 0..255 range
+    u8 := (0 #> u8 <# 255)
+
+PUB TempScale(scale)
+' Set temperature scale used by Temperature method
+'   Valid values:
+'       C (0): Celsius
+'       F (1): Fahrenheit
+'   Any other value returns the current setting
+    case scale
+        C, F:
+            _temp_scale := scale
+        other:
+            return _temp_scale
 
 PUB XLGDataRate(Hz): curr_rate
 ' Set output data rate, in Hz, of accelerometer and gyroscope
