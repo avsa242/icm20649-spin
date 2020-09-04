@@ -375,10 +375,12 @@ PUB FIFOEnabled(state): curr_state
         other:
             return ((curr_state >> core#FIFO_EN) & 1) == 1
 
-PUB FIFOFull: flag
-' FIFO Threshold status
-'   Returns: FALSE (0): lower than threshold level, TRUE(-1): at or higher than threshold level
-    flag := $00
+PUB FIFOFull{}: flag
+' Flag indicating FIFO is full
+'   Returns: TRUE (-1) if FIFO is full, FALSE (0) otherwise
+'   NOTE: If this flag is set, the oldest data has already been dropped from the FIFO
+    readreg(core#INT_STATUS_2, 1, @flag)
+    return ((flag >> core#FIFO_OVERFLOW_INT) & 1) == 1
 
 PUB FIFOMode(mode): curr_mode
 ' Set FIFO behavior
