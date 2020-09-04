@@ -407,9 +407,22 @@ PUB FIFOMode(mode): curr_mode
     mode := (curr_mode & core#FIFO_MODE_MASK) | mode
     writereg(core#FIFO_MODE, 1, @mode)
 
+PUB FIFORead(nr_bytes, ptr_data)
+' Read FIFO data
+'   Structure of data stored in FIFO
+'   (as applicable, depending on what sources are enabled with FIFOSource()):
+'       Accel X MSB, LSB
+'       Accel Y MSB, LSB
+'       Accel Z MSB, LSB
+'       Gyro X MSB, LSB
+'       Gyro Y MSB, LSB
+'       Gyro Z MSB, LSB
+'       Temp MSB, LSB
+    readreg(core#FIFO_R_W, nr_bytes, ptr_data)
+
 PUB FIFOSource(mask): curr_mask
 ' Set FIFO source data, as a bitmask
-'   Valid values:
+'   Valid values: 1: enable source, 0: disable source
 '       Bits: 43210
 '           4: Accelerometer
 '           3: Gyro Z-axis
@@ -431,10 +444,10 @@ PUB FIFOThreshold(level): curr_lvl
 '   Any other value polls the chip and returns the current setting
     curr_lvl := $00
 
-PUB FIFOUnreadSamples: nr_samples
+PUB FIFOUnreadSamples{}: nr_samples
 ' Number of unread samples stored in FIFO
-'   Returns:
-    nr_samples := $00
+'   Returns: unsigned 13bit
+    readreg(core#FIFO_COUNTH, 2, @nr_samples)
 
 PUB GyroAxisEnabled(xyz_mask): curr_mask
 ' Enable data output for gyroscope (all axes)
