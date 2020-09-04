@@ -383,10 +383,47 @@ PUB FIFOFull{}: flag
     return ((flag >> core#FIFO_OVERFLOW_INT) & 1) == 1
 
 PUB FIFOMode(mode): curr_mode
-' Set FIFO behavior
+' Set FIFO mode
 '   Valid values:
+'       BYPASS (0): FIFO disabled
+'       STREAM (1): FIFO enabled; when full, new data overwrites old data
+'       FIFO (2): FIFO enabled; when full, no new data will be written to FIFO
 '   Any other value polls the chip and returns the current setting
-    curr_mode := $00
+'   NOTE: If no data sources are set using FIFOSource(), the current mode returned will be BYPASS (0), regardless of what the mode was previously set to
+    curr_mode := 0
+    readreg(core#FIFO_MODE, 1, @curr_mode)
+    case mode
+        BYPASS:                                             ' If bypassing the FIFO, turn
+            fifosource(%00000000)                           '   off all FIFO data collection
+            return
+        STREAM, FIFO:
+            mode := lookdownz(mode: STREAM, FIFO)
+        other:
+            curr_mode := curr_mode & 1
+            if fifosource(-2)                               ' If there's a mask set with FIFOSource(), return
+                return lookupz(curr_mode: STREAM, FIFO)     '   either STREAM or FIFO as the current mode
+            else
+                return BYPASS                               ' If not, anything besides 0 (BYPASS) doesn't really matter or make sense
+    mode := (curr_mode & core#FIFO_MODE_MASK) | mode
+    writereg(core#FIFO_MODE, 1, @mode)
+
+PUB FIFOSource(mask): curr_mask
+' Set FIFO source data, as a bitmask
+'   Valid values:
+'       Bits: 43210
+'           4: Accelerometer
+'           3: Gyro Z-axis
+'           2: Gyro Y-axis
+'           1: Gyro X-axis
+'           0: Temperature
+'   Any other value polls the chip and returns the current setting
+    case mask
+        %00000..%11111:
+            writereg(core#FIFO_EN_2, 1, @mask)
+        other:
+            curr_mask := 0
+            readreg(core#FIFO_EN_2, 1, @curr_mask)
+            return
 
 PUB FIFOThreshold(level): curr_lvl
 ' Set FIFO threshold level
