@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Aug 29, 2020
+    Updated Sep 4, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -625,11 +625,15 @@ PUB Temperature{}: temp
         other:
             return
 
-PUB TempOffset(u8)
+PUB TempOffset(u8): curr_offs
 ' Set room temperature offset for Temperature()
 '   Valid values: 0..255
-'   Any other value is clamped to 0..255 range
-    u8 := (0 #> u8 <# 255)
+'   Any other value returns the current setting
+    case u8
+        0..255:
+            _roomtemp_offs := u8
+        other:
+            return _roomtemp_offs
 
 PUB TempScale(scale)
 ' Set temperature scale used by Temperature method
