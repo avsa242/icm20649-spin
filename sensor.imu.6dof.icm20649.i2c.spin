@@ -52,6 +52,11 @@ CON
     NORMAL                  = 0
     LOWPWR                  = 1
 
+' Clock sources
+    INT20                   = 0
+    AUTO                    = 1
+    CLKSTOP                 = 7
+
 VAR
 
     word    _abiasraw[3], _gbiasraw[3]
@@ -97,9 +102,8 @@ PUB Defaults{}
 PUB PresetIMUActive 'XXX tentatively named
 ' Preset settings:
 '   Temp sensor active
-'   Auto clock source
-'   ODR: xxx Hz
     powered(true)
+    clocksource(AUTO)
     accelopmode(NORMAL)
     accelaxisenabled(%111)
     acceldatarate(1127)
@@ -328,6 +332,22 @@ PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples, orig_scale
     gyrodatarate(orig_datarate)
     gyrolowpassfilter(orig_lpf)
 
+PUB ClockSource(src): curr_src
+' Set sensor clock source
+'   Valid values:
+'       INT20 (0): Internal 20MHz oscillator
+'      *AUTO (1): Automatically select best choice (PLL if ready, else internal oscillator)
+'       CLKSTOP (7): Stop clock and hold in reset
+    curr_src := 0
+    readreg(core#PWR_MGMT_1, 1, @curr_src)
+    case src
+        INT20, AUTO, CLKSTOP:
+        other:
+            return curr_src & core#CLKSEL_BITS
+
+    src := (curr_src & core#CLKSEL_MASK) | src
+    writereg(core#PWR_MGMT_1, 1, @src)
+
 PUB DeviceID{}: id
 ' Read device identification
     readreg(core#WHO_AM_I, 1, @id)
@@ -539,6 +559,8 @@ PUB XLGDataRate(Hz): curr_rate
 PUB XLGDataReady{}: flag
 ' Flag indicating new gyroscope/accelerometer data is ready to be read
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
+'   NOTE: The update rate of this flag depends upon the GyroDataRate() setting
+'       AccelDataRate() has no effect
     readreg(core#INT_STATUS_1, 1, @flag)
     return (flag & %1) == 1
 
