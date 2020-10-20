@@ -210,30 +210,30 @@ PUB DisplaySettings() | axo, ayo, azo, gxo, gyo, gzo
     ser.printf("(z)")
     ser.newline()
 
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
-'   e.g., Decimal (314159, 100000) would display 3.14159 on the terminal
-'   scaled: Fixed-point scaled up number
-'   divisor: Divide scaled-up number by this amount
-    if scaled < 0
-        sign := "-"
-    else
-        sign := ""
+PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor
     tmp := divisor
     places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
     repeat
         tmp /= 10
         places++
     until tmp == 1
-    part := int.deczeroed(abs(scaled // divisor), places)
+    scaled //= divisor
+    part := int.deczeroed(abs(scaled), places)
 
     ser.char(sign)
     ser.dec(abs(whole))
     ser.char(".")
     ser.str(part)
-    ser.chars(" ", 2)
 
 PUB Setup()
 

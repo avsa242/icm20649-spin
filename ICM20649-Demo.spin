@@ -20,8 +20,8 @@ CON
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    SCL_PIN     = 16
-    SDA_PIN     = 17
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_HZ      = 400_000
 ' --
 
@@ -212,24 +212,30 @@ PUB DisplaySettings{} | axo, ayo, azo, gxo, gyo, gzo
     ser.str(string("(z)"))
     ser.newline{}
 
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp
-' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
-'   e.g., Decimal (314159, 100000) would display 3.14159 on the termainl
-'   scaled: Fixed-point scaled up number
-'   divisor: Divide scaled-up number by this amount
+PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor
     tmp := divisor
     places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
     repeat
         tmp /= 10
         places++
     until tmp == 1
-    part := int.deczeroed(||(scaled // divisor), places)
+    scaled //= divisor
+    part := int.deczeroed(||scaled, places)
 
-    ser.dec (whole)
-    ser.char (".")
-    ser.str (part)
+    ser.char(sign)
+    ser.dec(||whole)
+    ser.char(".")
+    ser.str(part)
 
 PUB Setup{}
 
