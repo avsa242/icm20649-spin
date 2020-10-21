@@ -595,6 +595,22 @@ PUB Interrupt{}: flag
     readreg(core#INT_STATUS, 1, @flag)
     flag &= core#INT_STATUS_MASK
 
+PUB IntMask(mask): curr_mask
+' Set interrupt mask
+'   Valid values:
+'   Bit 3210 (For each bit, 0: disable interrupt, 1: enable interrupt)
+'       3: Wake-on-motion interrupt
+'       2: PLL enabled and ready
+'       1: DMP interrupt (INT1)
+'       0: I2C master interrupt
+    case mask
+        %0000..%1111:
+            writereg(core#INT_ENABLE, 1, @mask)
+        other:
+            curr_mask := 0
+            readreg(core#INT_ENABLE, 1, @curr_mask)
+            return
+
 PUB Powered(state): curr_state
 ' Enable device power
 '   Valid values: TRUE (-1 or 1), FALSE (0)
