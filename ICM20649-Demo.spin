@@ -5,7 +5,7 @@
     Description: Demo of the ICM20649 driver
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Sep 3, 2020
+    Updated Oct 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,8 +16,6 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
     SCL_PIN     = 28
@@ -37,7 +35,6 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    io      : "io"
     int     : "string.integer"
     imu     : "sensor.imu.6dof.icm20649.i2c"
 
@@ -91,12 +88,12 @@ PUB Main{} | dispmode
                 temp{}
 
     ser.showcursor{}
-    flashled(LED, 100)
+    repeat
 
 PUB AccelCalc{} | ax, ay, az
 
     repeat until imu.acceldataready{}
-    imu.accelg (@ax, @ay, @az)
+    imu.accelg(@ax, @ay, @az)
     ser.str(string("Accel micro-g: "))
     ser.position(DAT_X_COL, 14)
     decimal(ax, 1_000_000)
@@ -110,20 +107,20 @@ PUB AccelCalc{} | ax, ay, az
 PUB AccelRaw{} | ax, ay, az
 
     repeat until imu.acceldataready{}
-    imu.acceldata (@ax, @ay, @az)
+    imu.acceldata(@ax, @ay, @az)
     ser.str(string("Accel raw: "))
     ser.position(DAT_X_COL, 14)
-    ser.str (int.decpadded (ax, 7))
+    ser.str(int.decpadded(ax, 7))
     ser.position(DAT_Y_COL, 14)
-    ser.str (int.decpadded (ay, 7))
+    ser.str(int.decpadded(ay, 7))
     ser.position(DAT_Z_COL, 14)
-    ser.str (int.decpadded (az, 7))
+    ser.str(int.decpadded(az, 7))
     ser.clearline{}
     ser.newline{}
 
 PUB GyroCalc{} | gx, gy, gz
 
-'    repeat until imu.gyrodataready{}
+    repeat until imu.gyrodataready{}
     imu.gyrodps (@gx, @gy, @gz)
     ser.str(string("Gyro micro DPS:  "))
     ser.position(DAT_X_COL, 15)
@@ -137,15 +134,15 @@ PUB GyroCalc{} | gx, gy, gz
 
 PUB GyroRaw{} | gx, gy, gz
 
-'    repeat until imu.gyrodataready{}
-    imu.gyrodata (@gx, @gy, @gz)
+    repeat until imu.gyrodataready{}
+    imu.gyrodata(@gx, @gy, @gz)
     ser.str(string("Gyro raw:  "))
     ser.position(DAT_X_COL, 15)
-    ser.str (int.decpadded (gx, 7))
+    ser.str(int.decpadded (gx, 7))
     ser.position(DAT_Y_COL, 15)
-    ser.str (int.decpadded (gy, 7))
+    ser.str(int.decpadded (gy, 7))
     ser.position(DAT_Z_COL, 15)
-    ser.str (int.decpadded (gz, 7))
+    ser.str(int.decpadded (gz, 7))
     ser.clearline{}
     ser.newline{}
 
@@ -153,16 +150,15 @@ PUB Temp{}
 
     ser.str(string("Temp:"))
     ser.position(DAT_X_COL, 16)
-'    ser.str(int.decpadded(imu.temperature{}, 5))
     decimal(imu.temperature{}, 1_00)
 
 PUB Calibrate{}
 
-    ser.position (0, 21)
+    ser.position(0, 21)
     ser.str(string("Calibrating..."))
     imu.calibrateaccel{}
     imu.calibrategyro{}
-    ser.position (0, 21)
+    ser.position(0, 21)
     ser.str(string("              "))
 
 PUB DisplaySettings{} | axo, ayo, azo, gxo, gyo, gzo
@@ -230,19 +226,19 @@ PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
         places++
     until tmp == 1
     scaled //= divisor
-    part := int.deczeroed(||scaled, places)
+    part := int.deczeroed(||(scaled), places)
 
     ser.char(sign)
-    ser.dec(||whole)
+    ser.dec(||(whole))
     ser.char(".")
     ser.str(part)
 
 PUB Setup{}
 
-    repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.strln(string("Serial terminal started"))
     if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ)
         imu.defaults{}
         imu.presetimuactive{}
@@ -251,10 +247,6 @@ PUB Setup{}
         ser.str(string("ICM20649 driver failed to start - halting"))
         imu.stop{}
         time.msleep(5)
-        flashled(LED, 500)
-
-
-#include "lib.utility.spin"
 
 DAT
 {
