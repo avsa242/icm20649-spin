@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU (P2 version)
     Copyright (c) 2020
     Started Sep 4, 2020
-    Updated Sep 4, 2020
+    Updated Oct 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -585,9 +585,15 @@ PUB GyroScale(dps=-2): curr_scl
     writereg(core#GYRO_CFG1, 1, @dps)
 
 PUB Interrupt(): flag
-' Flag indicating one or more interrupts asserted
-'   Returns TRUE if one or more interrupts asserted, FALSE if not
-    flag := $00
+' Read interrupt state
+'   Bit 3210 (For each bit, 0: No interrupt, 1: Interrupt has been generated)
+'       3: Wake-on-motion interrupt
+'       2: PLL enabled and ready
+'       1: DMP interrupt (INT1)
+'       0: I2C master interrupt
+    flag := 0
+    readreg(core.INT_STATUS, 1, @flag)
+    flag &= core.INT_STATUS_MASK
 
 PUB Powered(state=-2): curr_state
 ' Enable device power
