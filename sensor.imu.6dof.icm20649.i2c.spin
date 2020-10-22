@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Oct 21, 2020
+    Updated Oct 22, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,9 +44,9 @@ CON
     KELVIN                  = 2
 
 ' FIFO modes
-    BYPASS                  = 0
-    FIFO                    = 1
-    STREAM                  = 2
+    BYPASS                  = 2
+    FIFO                    = 0
+    STREAM                  = 15
 
 ' Accelerometer operating modes
     NORMAL                  = 0
@@ -385,25 +385,24 @@ PUB FIFOFull{}: flag
 PUB FIFOMode(mode): curr_mode
 ' Set FIFO mode
 '   Valid values:
-'       BYPASS (0): FIFO disabled
-'       STREAM (1): FIFO enabled; when full, new data overwrites old data
-'       FIFO (2): FIFO enabled; when full, no new data will be written to FIFO
+'       BYPASS (2): FIFO disabled
+'       STREAM (0): FIFO enabled; when full, new data overwrites old data
+'       FIFO (15): FIFO enabled; when full, no new data will be written to FIFO
 '   Any other value polls the chip and returns the current setting
 '   NOTE: If no data sources are set using FIFOSource(), the current mode returned will be BYPASS (0), regardless of what the mode was previously set to
     curr_mode := 0
     readreg(core#FIFO_MODE, 1, @curr_mode)
     case mode
-        BYPASS:                                             ' If bypassing the FIFO, turn
-            fifosource(%00000000)                           '   off all FIFO data collection
+        BYPASS:                                 ' If bypassing the FIFO, turn
+            fifosource(%00000000)               '   off FIFO data collection
             return
         STREAM, FIFO:
-            mode := lookdownz(mode: STREAM, FIFO)
         other:
             curr_mode := curr_mode & 1
-            if fifosource(-2)                               ' If there's a mask set with FIFOSource(), return
-                return lookupz(curr_mode: STREAM, FIFO)     '   either STREAM or FIFO as the current mode
+            if fifosource(-2)                   ' If there's a mask set with FIFOSource(), return
+                return                          '   either STREAM or FIFO as the current mode
             else
-                return BYPASS                               ' If not, anything besides 0 (BYPASS) doesn't really matter or make sense
+                return BYPASS                   ' If not, anything besides 0 (BYPASS) doesn't really matter or make sense
     mode := (curr_mode & core#FIFO_MODE_MASK) | mode
     writereg(core#FIFO_MODE, 1, @mode)
 
