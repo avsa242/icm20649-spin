@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Oct 22, 2020
+    Updated Oct 24, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -63,7 +63,7 @@ CON
 
 VAR
 
-    word    _abiasraw[3], _gbiasraw[3]
+    word    _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
     word    _ares, _gres, _temp_scale
     byte    _roomtemp_offs
 
@@ -108,7 +108,6 @@ PUB Defaults{}
 
 PUB PresetIMUActive 'XXX tentatively named
 ' Preset settings:
-'   Temp sensor active
     powered(true)
     clocksource(AUTO)
     accelopmode(NORMAL)
@@ -118,6 +117,7 @@ PUB PresetIMUActive 'XXX tentatively named
     gyroaxisenabled(%111)
     gyrodatarate(1100)
     gyrolowpassfilter(51)
+    tempenabled(true)
     tempscale(C)
 
 PUB AccelAxisEnabled(xyz_mask): curr_mask
@@ -634,6 +634,21 @@ PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
     flag := $00
+
+PUB TempEnabled(enable): curr_state
+' Enable the on-chip temperature sensor
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current setting
+    curr_state := 0
+    readreg(core#PWR_MGMT_1, 1, @curr_state)
+    case ||(enable)
+        0, 1:
+            enable := (||(enable) ^ 1) << core#TEMP_DIS ' invert logic since
+        other:                                  ' reg function is for disabling
+            return (((curr_state >> core#TEMP_DIS) & %1) ^ 1) == 1 ' the sensor
+
+    enable := ((curr_state & core#TEMP_DIS_MASK) | enable) & core#PWR_MGMT_1_MASK
+    writereg(core#PWR_MGMT_1, 1, @enable)
 
 PUB Temperature{}: temp
 ' Read temperature, in hundredths of a degree

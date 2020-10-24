@@ -42,3 +42,6 @@ P2/SPIN2:
 - [x] Implement gyro methods
 - [x] Implement FIFO methods
 - [x] P2/SPIN2 support
+- [ ] Implement alternate I2C address support
+- [ ] Implement SPI support
+

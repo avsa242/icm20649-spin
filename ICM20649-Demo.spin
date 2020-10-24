@@ -41,7 +41,6 @@ OBJ
 PUB Main{} | dispmode
 
     setup{}
-
     imu.accellowpassfilter(50)                              ' 6, 12, 24, 50, 111, 246, 473
     imu.acceldatarate(100)                                  ' 1..1121
     imu.accelscale(4)                                       ' 4, 8, 16, 30 (g's)
