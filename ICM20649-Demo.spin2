@@ -5,22 +5,23 @@
     Description: Demo of the ICM20649 driver (P2 version)
     Copyright (c) 2020
     Started Sep 4, 2020
-    Updated Oct 21, 2020
+    Updated Oct 24, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 CON
 
-    _clkfreq    = cfg#_clkfreq_def
-    _xtlfreq    = cfg#_xtlfreq
+    _clkfreq    = cfg._clkfreq_def
+    _xtlfreq    = cfg._xtlfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
+    LED         = cfg.LED1
     SER_BAUD    = 2_000_000
 
     SCL_PIN     = 26
     SDA_PIN     = 27
     I2C_HZ      = 400_000
+    ADDR_BITS   = 0                             ' optional address bit: 0 or 1
 ' --
 
     DAT_X_COL   = 20
@@ -238,7 +239,7 @@ PUB Setup()
     waitms(30)
     ser.clear()
     ser.printf("Serial terminal started\n")
-    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+    if imu.start(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         imu.defaults()
         imu.presetimuactive()
         ser.printf("ICM20649 driver started (I2C)")
@@ -246,6 +247,7 @@ PUB Setup()
         ser.printf("ICM20649 driver failed to start - halting")
         imu.stop()
         waitms(5)
+        repeat
 
 DAT
 {

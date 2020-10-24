@@ -18,6 +18,7 @@ CON
     DEF_SCL                 = 28
     DEF_SDA                 = 29
     DEF_HZ                  = 100_000
+    DEF_ADDR_BITS           = 0
     I2C_MAX_FREQ            = core#I2C_MAX_FREQ
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
@@ -66,6 +67,7 @@ VAR
     word    _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
     word    _ares, _gres, _temp_scale
     byte    _roomtemp_offs
+    byte    _addr
 
 OBJ
 
@@ -78,15 +80,16 @@ PUB Null{}
 
 PUB Start{}: okay
 ' Start with "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR_BITS)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): okay
 ' Start with custom I2C I/O pin settings and bus speed
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)
+                _addr := (||(ADDR_BITS <> 0)) << 1
                 time.usleep(core#TPOR)                  ' Device startup delay
-                if i2c.present(SLAVE_WR)                ' Response from device?
+                if i2c.present(SLAVE_WR | _addr)        ' Response from device?
                     if deviceid{} == core#DEVID_RESP    ' Verify device ID
                         reset{}                         ' Restore default settings
                         return
@@ -701,12 +704,12 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from the slave device
     case reg_nr                                         ' Basic register validation
         core#ACCEL_XOUT_H..core#TEMP_OUT_H:             ' Prioritize output data regs
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.write(SLAVE_RD | _addr)
             repeat tmp from nr_bytes-1 to 0
                 byte[ptr_buff][tmp] := i2c.read(tmp == 0)
             i2c.stop{}
@@ -715,19 +718,19 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         } $029, $03b..$052, $066..$069, $070..$072, $074, $076, $102, $103,{
         } $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$317:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := core#REG_BANK_SEL        ' Set register bank (0..3):
             cmd_pkt.byte[2] := reg_nr.byte[1] << core#USER_BANK '   use the bank # encoded in nibble 2
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 3)
 
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr.byte[0]            ' Actual reg # is just the lower 8 bits
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.write(SLAVE_RD | _addr)
             repeat tmp from nr_bytes-1 to 0
                 byte[ptr_buff][tmp] := i2c.read(tmp == 0)
 
@@ -736,7 +739,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             return
 
     if lookdown(reg_nr.byte[1]: 1..3)                   ' If applicable,
-        cmd_pkt.byte[0] := SLAVE_WR                     ' Return to bank 0
+        cmd_pkt.byte[0] := SLAVE_WR | _addr             ' Return to bank 0
         cmd_pkt.byte[1] := core#REG_BANK_SEL            ' when done (most used
         cmd_pkt.byte[2] := 0                            ' regs are in bank 0)
 
@@ -750,13 +753,13 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         $003, $005, $006, $007, $00f..$013, $066..$069, $072, $076, $102,{
         } $103, $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$316:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := core#REG_BANK_SEL
             cmd_pkt.byte[2] := reg_nr.byte[1] << core#USER_BANK ' Use bank # encoded in nibble 2
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 3)
 
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
             i2c.start{}
             i2c.wr_block(@cmd_pkt, 2)
@@ -768,7 +771,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             return
 
     if lookdown(reg_nr.byte[1]: 1..3)
-        cmd_pkt.byte[0] := SLAVE_WR
+        cmd_pkt.byte[0] := SLAVE_WR | _addr
         cmd_pkt.byte[1] := core#REG_BANK_SEL
         cmd_pkt.byte[2] := 0
 

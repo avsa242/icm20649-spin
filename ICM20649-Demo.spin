@@ -5,7 +5,7 @@
     Description: Demo of the ICM20649 driver
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Oct 21, 2020
+    Updated Oct 24, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,6 +21,7 @@ CON
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_HZ      = 400_000
+    ADDR_BITS   = 0                             ' optional address bit: 0 or 1
 ' --
 
     DAT_X_COL   = 20
@@ -238,7 +239,7 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         imu.defaults{}
         imu.presetimuactive{}
         ser.str(string("ICM20649 driver started (I2C)"))
@@ -246,6 +247,7 @@ PUB Setup{}
         ser.str(string("ICM20649 driver failed to start - halting"))
         imu.stop{}
         time.msleep(5)
+        repeat
 
 DAT
 {
