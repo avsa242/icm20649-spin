@@ -22,6 +22,8 @@ CON
     SDA_PIN     = 27
     I2C_HZ      = 400_000
     ADDR_BITS   = 0                             ' optional address bit: 0 or 1
+
+    TEMP_SCALE  = C
 ' --
 
     DAT_X_COL   = 20
@@ -53,7 +55,7 @@ PUB Main() | dispmode
     imu.gyroaxisenabled(%111)                               ' 0: disable, %001..%111: enable (all axes)
     imu.gyrobias(0, 0, 0, 1)                                ' x, y, z: -32768..32767, rw = 1 (write)
 
-    imu.tempscale(C)                                        ' C (0), F (1)
+    imu.tempscale(TEMP_SCALE)                               ' C (0), F (1)
 
     ser.hidecursor()
     dispmode := 0
@@ -151,6 +153,7 @@ PUB Temp()
     ser.printf("Temp:")
     ser.position(DAT_X_COL, 16)
     decimal(imu.temperature(), 1_00)
+    ser.char(lookupz(TEMP_SCALE: "C", "F"))
 
 PUB Calibrate()
 
