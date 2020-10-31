@@ -5,10 +5,14 @@
     Description: Demo of the ICM20649 driver
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Oct 24, 2020
+    Updated Oct 31, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment _one_ of the below to choose the interface
+#define ICM20649_I2C
+'#define ICM20649_SPI
+
 CON
 
     _clkmode    = cfg#_clkmode
@@ -18,10 +22,18 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
+' I2C:
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_HZ      = 400_000
     ADDR_BITS   = 0                             ' optional address bit: 0 or 1
+
+' SPI:
+    CS          = 0
+    SCK         = 1
+    MOSI        = 2
+    MISO        = 3
+    SCK_FREQ    = 4_000_000
 
     TEMP_SCALE  = C
 ' --
@@ -39,7 +51,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.6dof.icm20649.i2c"
+    imu     : "sensor.imu.6dof.icm20649.i2cspi"
 
 PUB Main{} | dispmode
 
@@ -242,10 +254,17 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
+#ifdef ICM20649_SPI
+    if imu.startx(CS, SCK, MOSI, MISO, SCK_FREQ)
+        imu.defaults{}
+        imu.presetimuactive{}
+        ser.str(string("ICM20649 driver started (SPI)"))
+#elseifdef ICM20649_I2C
     if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         imu.defaults{}
         imu.presetimuactive{}
         ser.str(string("ICM20649 driver started (I2C)"))
+#endif
     else
         ser.str(string("ICM20649 driver failed to start - halting"))
         imu.stop{}

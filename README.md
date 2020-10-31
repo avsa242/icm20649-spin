@@ -7,7 +7,7 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for the ICM2064
 
 ## Salient Features
 
-* I2C connection at up to 400kHz
+* I2C connection at up to 400kHz, SPI connection at 4MHz (P1), or up to 7MHz (P2)
 * Read accelerometer (raw, micro-g's), gyroscope (raw, micro-dps), temperature (centi-degrees)
 * Set accel, gyro full-scale
 * Data-ready flag
@@ -43,5 +43,5 @@ P2/SPIN2:
 - [x] Implement FIFO methods
 - [x] P2/SPIN2 support
 - [x] Implement alternate I2C address support
-- [ ] Implement SPI support
+- [x] Implement SPI support
 

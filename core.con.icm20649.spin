@@ -5,16 +5,23 @@
     Description: Low-level constants
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Aug 31, 2020
+    Updated Oct 31, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
+' I2C
     I2C_MAX_FREQ                = 400_000
     SLAVE_ADDR                  = $68 << 1
-    TPOR                        = 1_000                 ' usec
+
+' SPI
+    SCK_MAX_FREQ                = 7_000_000
+    R                           = 1 << 7        ' SPI: read reg
+    W                           = 0 << 7        ' SPI: write reg
+
+    TPOR                        = 5_000         ' usec
 
 ' ICM20649 has 4 banks of registers, numbered 0..3. Many register numbers
 '   are duplicated across banks, so to work around this (i.e. for register
