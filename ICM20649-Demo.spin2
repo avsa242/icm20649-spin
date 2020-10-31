@@ -10,8 +10,8 @@
     --------------------------------------------
 }
 ' Uncomment _one_ of the below to choose the interface
-#define ICM20649_I2C
-'#define ICM20649_SPI
+'#define ICM20649_I2C
+#define ICM20649_SPI
 CON
 
     _clkfreq    = cfg._clkfreq_def
@@ -29,9 +29,9 @@ CON
 
 ' SPI:
     CS          = 32
-    SCK         = 34
-    MOSI        = 35
-    MISO        = 33
+    SCK         = 35
+    MOSI        = 34
+    MISO        = 36
     SCK_FREQ    = 7_000_000
 
     TEMP_SCALE  = C

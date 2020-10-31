@@ -72,7 +72,7 @@ VAR
 OBJ
 
 #ifdef ICM20649_SPI
-    spi : "com.spi.bitbang-fast"
+    spi : "com.spi"
 #elseifdef ICM20649_I2C
     i2c : "com.i2c"                                     ' PASM I2C Driver
 #endif
@@ -86,12 +86,8 @@ PUB Start(CS, SCK, MOSI, MISO, SCK_FREQ=7_000_000): okay
 ' Start with custom I2C I/O pin settings and bus speed
     if lookdown(CS: 0..63) and lookdown(SCK: 0..63) and lookdown(MOSI: 0..63) and lookdown(MISO: 0..63)
         if SCK_FREQ <= core.SCK_MAX_FREQ
-            if okay := spi.start(MOSI, MISO, SCK, SCK_FREQ)
+            if okay := spi.start(SCK, MOSI, MISO, SCK_FREQ)
                 _CS := CS
-                _SCK := SCK
-                _MOSI := MOSI
-                _MISO := MISO
-                pinh(CS)
                 waitus(core.TPOR)               ' Device startup delay
                 if deviceid() == core.DEVID_RESP' Verify device ID
                     reset()                     ' Restore default settings
@@ -729,7 +725,7 @@ PRI bankSel(bank_nr) | cmd_pkt, tmp
         cmd_pkt.byte[1] := bank_nr << core#USER_BANK
         pinl(_CS)
         repeat tmp from 0 to 1
-            spi.write(_MOSI, _SCK, spi.MSBFIRST, 8, cmd_pkt.byte[tmp])
+            spi.write(cmd_pkt.byte[tmp])
         pinh(_CS)
 #elseifdef ICM20649_I2C
         cmd_pkt.byte[0] := SLAVE_WR
@@ -747,9 +743,9 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         core.ACCEL_XOUT_H..core.TEMP_OUT_H:     ' Prioritize output data regs
 #ifdef ICM20649_SPI
             pinl(_CS)
-            spi.write(_MOSI, _SCK, spi.MSBFIRST, 8, reg_nr | core#R)
+            spi.write(reg_nr | core#R)
             repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := spi.read(_MISO, _SCK, spi.MSBPRE, 8)
+                byte[ptr_buff][tmp] := spi.read()
             pinh(_CS)
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
@@ -771,9 +767,9 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             banksel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             pinl(_CS)
-            spi.write(_MOSI, _SCK, spi.MSBFIRST, 8, reg_nr.byte[0] | core#R)
+            spi.write(reg_nr.byte[0] | core#R)
             repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := spi.read(_MISO, _SCK, spi.MSBPRE, 8)
+                byte[ptr_buff][tmp] := spi.read()
             pinh(_CS)
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
@@ -804,9 +800,9 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             banksel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             pinl(_CS)
-            spi.write(_MOSI, _SCK, spi.MSBFIRST, 8, reg_nr.byte[0])
+            spi.write(reg_nr.byte[0])
             repeat tmp from nr_bytes-1 to 0
-                spi.write(_MOSI, _SCK, spi.MSBFIRST, 8, byte[ptr_buff][tmp])
+                spi.write(byte[ptr_buff][tmp])
             pinh(_CS)
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
