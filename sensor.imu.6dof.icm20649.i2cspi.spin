@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2020
     Started Aug 28, 2020
-    Updated Oct 31, 2020
+    Updated Nov 1, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -223,6 +223,7 @@ PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
 PUB AccelClearInt{} | tmp
 ' Clears out any interrupts set up on the Accelerometer
 '   and resets all Accelerometer interrupt registers to their default values.
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     tmp := $00
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
@@ -234,6 +235,7 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 
 PUB AccelDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := $00
 
 PUB AccelDataRate(Hz): curr_Hz
@@ -264,6 +266,7 @@ PUB AccelG(ax, ay, az) | tmpx, tmpy, tmpz
 PUB AccelInt{}: flag
 ' Flag indicating accelerometer interrupt asserted
 '   Returns TRUE if interrupt asserted, FALSE if not
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := $00
 
 PUB AccelLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
@@ -486,6 +489,7 @@ PUB FIFOThreshold(level): curr_lvl
 ' Set FIFO threshold level
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     curr_lvl := $00
 
 PUB FIFOUnreadSamples{}: nr_samples
@@ -539,6 +543,7 @@ PUB GyroBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
 
 PUB GyroClearInt{} | tmp
 ' Clears out any interrupts set up on the Gyroscope and resets all Gyroscope interrupt registers to their default values.
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     tmp := $00
 
 PUB GyroData(gx, gy, gz) | tmp[2]
@@ -579,6 +584,7 @@ PUB GyroDPS(gx, gy, gz) | tmp[3]
 PUB GyroInt{}: flag
 ' Flag indicating gyroscope interrupt asserted
 '   Returns TRUE if interrupt asserted, FALSE if not
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := $00
 
 PUB GyroIntSelect(mode): curr_mode
@@ -586,6 +592,7 @@ PUB GyroIntSelect(mode): curr_mode
 '   Valid values:
 '
 '   Any other value polls the chip and returns the current setting
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     curr_mode := $00
 
 PUB GyroLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
@@ -678,6 +685,7 @@ PUB Reset{} | tmp
 PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := $00
 
 PUB TempEnabled(enable): curr_state
@@ -732,6 +740,7 @@ PUB XLGDataRate(Hz): curr_rate
 ' Set output data rate, in Hz, of accelerometer and gyroscope
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
+'   NOT IMPLEMENTED (dummy method for API compatibility only)
     curr_rate := $00
 
 PUB XLGDataReady{}: flag
