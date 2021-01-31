@@ -23,6 +23,8 @@ CON
     W                           = 0 << 7        ' SPI: write reg
 
     TPOR                        = 5_000         ' usec
+    A_START_COLD                = 30_000        ' usec
+    G_START_COLD                = 35_000        ' usec
 
 ' ICM20649 has 4 banks of registers, numbered 0..3. Many register numbers
 '   are duplicated across banks, so to work around this (i.e. for register

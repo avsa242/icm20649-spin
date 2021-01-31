@@ -85,14 +85,13 @@ PUB Null{}
 ' This is not a top-level object
 
 #ifdef ICM20649_SPI
-PUB Startx(CS, SCK, MOSI, MISO): status
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O pin settings
-    if lookdown(CS: 0..31) and lookdown(SCK: 0..31) and lookdown(MOSI: 0..31) {
-}   and lookdown(MISO: 0..31)
-        if (status := spi.init(CS, SCK, MOSI, MISO, core#SPI_MODE))
-            time.usleep(core#TPOR)              ' wait for device startup
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
+}   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
+        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            time.usleep(core#G_START_COLD)      ' wait for device startup
             if deviceid{} == core#DEVID_RESP    ' validate device
-                reset{}                         ' reset/start in known state
                 return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
@@ -111,10 +110,9 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             _addr := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
-            time.usleep(core#TPOR)              ' wait for device startup
+            time.usleep(core#G_START_COLD)      ' wait for device startup
             if i2c.present(SLAVE_WR | _addr)    ' test device bus presence
                 if deviceid{} == core#DEVID_RESP' validate device
-                    reset{}                     ' reset/start in known state
                     return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
@@ -146,7 +144,6 @@ PUB Preset_Active{}
     accelscale(4)
     gyroscale(500)
     tempscale(C)
-    tempscale(C)
 
 PUB AccelAxisEnabled(mask): curr_mask
 ' Enable data output for accelerometer (all axes)
@@ -160,8 +157,8 @@ PUB AccelAxisEnabled(mask): curr_mask
     case mask
         %000:
             mask := %111 << core#DIS_ACCEL      ' Chip logic is inverse
-        %001..%111:                                     ' If any bit is set,
-            mask := %000                            '   enable the accel
+        %001..%111:                             ' If any bit is set,
+            mask := %000                        '   enable the accel
         other:
             curr_mask >>= core#DIS_ACCEL
             curr_mask &= core#DIS_ACCEL_BITS
@@ -297,23 +294,23 @@ PUB AccelOpMode(mode): curr_mode
     mode := (curr_mode & core#ACCEL_CYCLE_MASK) | mode
     writereg(core#LP_CONFIG, 1, @mode)
 
-PUB AccelScale(g): curr_scl
+PUB AccelScale(scale): curr_scl
 ' Set accelerometer full-scale range, in g's
 '   Valid values: *4, 8, 16, 30
 '   Any other value polls the chip and returns the current setting
     curr_scl := 0
     readreg(core#ACCEL_CFG, 1, @curr_scl)
-    case g
+    case scale
         4, 8, 16, 30:
-            g := lookdownz(g: 4, 8, 16, 30) << core#ACCEL_FS_SEL
-            _ares := lookupz(g >> core#ACCEL_FS_SEL: 0_000122, 0_000244, 0_000488, 0_000976)
+            scale := lookdownz(scale: 4, 8, 16, 30) << core#ACCEL_FS_SEL
+            _ares := lookupz(scale >> core#ACCEL_FS_SEL: 0_000122, 0_000244, 0_000488, 0_000976)
             ' 1/8192 (LSB per g), 1/4096, 1/2048, 1/1024 * 1_000_000
         other:
             curr_scl := (curr_scl >> core#ACCEL_FS_SEL) & core#ACCEL_FS_SEL_BITS
             return lookupz(curr_scl: 4, 8, 16, 30)
 
-    g := ((curr_scl & core#ACCEL_FS_SEL_MASK) | g) & core#ACCEL_CFG_MASK
-    writereg(core#ACCEL_CFG, 1, @g)
+    scale := ((curr_scl & core#ACCEL_FS_SEL_MASK) | scale) & core#ACCEL_CFG_MASK
+    writereg(core#ACCEL_CFG, 1, @scale)
 
 PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias[3], orig_scale, orig_datarate, orig_lpf
 ' Calibrate the accelerometer
@@ -378,6 +375,11 @@ PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_scl, ori
     gyroscale(orig_scl)                         ' Restore user settings
     gyrodatarate(orig_drate)
     gyrolowpassfilter(orig_lpf)
+
+PUB CalibrateXLG{}
+
+    calibrateaccel{}
+    calibrategyro{}
 
 PUB ClockSource(src): curr_src
 ' Set sensor clock source
@@ -674,6 +676,7 @@ PUB Reset{} | tmp
 ' Reset the device
     tmp := (1 << core#DEV_RESET)
     writereg(core#PWR_MGMT_1, 1, @tmp)
+    time.usleep(core#G_START_COLD)
 
 PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
@@ -730,7 +733,7 @@ PUB TempScale(scale): curr_scl
         other:
             return _temp_scale
 
-PUB XLGDataRate(Hz): curr_rate
+PUB XLGDataRate(rate): curr_rate
 ' Set output data rate, in Hz, of accelerometer and gyroscope
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
