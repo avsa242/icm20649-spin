@@ -80,7 +80,7 @@ OBJ
 #elseifdef ICM20649_I2C
     i2c : "com.i2c"                             ' I2C engine
 #endif
-    core: "core.con.icm20649.spin"              ' hw-specific low-level const's
+    core: "core.con.icm20649"                   ' hw-specific low-level const's
 
 PUB Null()
 ' This is not a top-level object
@@ -292,7 +292,7 @@ PUB AccelOpMode(mode=-2): curr_mode
     mode := (curr_mode & core.ACCEL_CYCLE_MASK) | mode
     writereg(core.LP_CONFIG, 1, @mode)
 
-PUB AccelScale(scale): curr_scl
+PUB AccelScale(scale=-2): curr_scl
 ' Set accelerometer full-scale range, in g's
 '   Valid values: *4, 8, 16, 30
 '   Any other value polls the chip and returns the current setting
@@ -373,6 +373,9 @@ PUB CalibrateGyro() | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_scl, ori
     gyroscale(orig_scl)                         ' Restore user settings
     gyrodatarate(orig_drate)
     gyrolowpassfilter(orig_lpf)
+
+PUB CalibrateMag()
+' dummy method
 
 PUB CalibrateXLG()
 
@@ -546,6 +549,9 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[1]
     long[ptr_z] := ~~tmp.word[0]
 
+PUB GyroDataOverrun()
+' dummy method
+
 PUB GyroDataRate(rate=-2): curr_rate
 ' Set gyroscope output data rate, in Hz
 '   Valid values: 1..1100 (default: 1100)
@@ -654,6 +660,27 @@ PUB IntMask(mask=-2): curr_mask
             curr_mask := 0
             readreg(core.INT_ENABLE, 1, @curr_mask)
             return
+
+PUB MagBias(x, y, z, rw=0)
+'dummy method
+
+PUB MagData(x, y, z)
+' dummy method
+
+PUB MagDataOverrun()
+' dummy method
+
+PUB MagDataRate(rate=-2)
+' dummy method
+
+PUB MagDataReady()
+' dummy method
+
+PUB MagGauss(x, y, z)
+' dummy method
+
+PUB MagScale(scale=-2)
+' dummy method
 
 PUB Powered(state=-2): curr_state
 ' Enable device power
