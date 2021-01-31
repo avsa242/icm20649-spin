@@ -7,7 +7,8 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for the ICM2064
 
 ## Salient Features
 
-* I2C connection at up to 400kHz, SPI connection at 4MHz (P1), or up to 7MHz (P2)
+* I2C connection at up to 400kHz
+* SPI connection at a fixed 4MHz (P1), up to 7MHz (P2)
 * Read accelerometer (raw, micro-g's), gyroscope (raw, micro-dps), temperature (centi-degrees)
 * Set accel, gyro full-scale
 * Data-ready flag
@@ -28,7 +29,7 @@ P2/SPIN2:
 ## Compiler Compatibility
 
 * P1/SPIN1: OpenSpin (tested with 1.00.81)
-* P2/SPIN2: FastSpin (tested with 4.5.0)
+* P2/SPIN2: FlexSpin (tested with 5.0.6-beta)
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
