@@ -18,6 +18,7 @@ CON
 
 ' SPI
     SCK_MAX_FREQ                = 7_000_000
+    SPI_MODE                    = 0
     R                           = 1 << 7        ' SPI: read reg
     W                           = 0 << 7        ' SPI: write reg
 

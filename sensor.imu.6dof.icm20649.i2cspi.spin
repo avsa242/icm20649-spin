@@ -3,9 +3,9 @@
     Filename: sensor.imu.6dof.icm20649.i2c.spin
     Author: Jesse Burt
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Aug 28, 2020
-    Updated Nov 1, 2020
+    Updated Jan 31, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,10 +21,6 @@ CON
     DEF_ADDR_BITS           = 0
     I2C_MAX_FREQ            = core#I2C_MAX_FREQ
 
-    DEF_MISO                = 0
-    DEF_SCK                 = 1
-    DEF_MOSI                = 2
-    DEF_CS                  = 3
     DEF_SCK_FREQ            = 1_000_000
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
@@ -78,59 +74,52 @@ VAR
 OBJ
 
 #ifdef ICM20649_SPI
-    spi : "com.spi.bitbang"
+    spi : "com.spi.bitbang"                     ' PASM SPI engine
 #elseifdef ICM20649_I2C
-    i2c : "com.i2c"                                     ' PASM I2C Driver
+    i2c : "com.i2c"                             ' PASM I2C engine
 #endif
-    core: "core.con.icm20649.spin"                      ' Low-level constants
-    time: "time"                                        ' Basic timing functions
+    core: "core.con.icm20649.spin"              ' hw-specific low-level const's
+    time: "time"                                ' basic timing functions
 
 PUB Null{}
 ' This is not a top-level object
 
 #ifdef ICM20649_SPI
-
-PUB Start{}: okay
-' Start with "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_CS, DEF_SCK, DEF_MOSI, DEF_MISO, DEF_SCK_FREQ)
-
-PUB Startx(CS, SCK, MOSI, MISO, SCK_FREQ): okay
-' Start driver using SPI interface
-'   CS: SPI chip-select
-'   SCK: SPI SCK/clock pin
-'   MOSI: SPI MOSI/Propeller to Device
-'   MISO: SPI MISO/Device to Propeller
-'   All pin assignments must be unique and in the range 0..31
-'   SCK_FREQ: SPI bus frequency (device and SPI-engine specific)
-    if lookdown(CS: 0..31) and lookdown(SCK: 0..31) and lookdown(MOSI: 0..31) and lookdown(MISO: 0..31)
-        if SCK_FREQ =< core#SCK_MAX_FREQ
-            if okay := spi.start(CS, SCK, MOSI, MISO)
-                time.usleep(core#TPOR)          ' Device startup delay
-                if deviceid{} == core#DEVID_RESP' Verify device ID
-                    reset{}                     ' Restore default settings
-                    return
-
-    return FALSE                                ' One of the above failed
+PUB Startx(CS, SCK, MOSI, MISO): status
+' Start using custom I/O pin settings
+    if lookdown(CS: 0..31) and lookdown(SCK: 0..31) and lookdown(MOSI: 0..31) {
+}   and lookdown(MISO: 0..31)
+        if (status := spi.init(CS, SCK, MOSI, MISO, core#SPI_MODE))
+            time.usleep(core#TPOR)              ' wait for device startup
+            if deviceid{} == core#DEVID_RESP    ' validate device
+                reset{}                         ' reset/start in known state
+                return
+    ' if this point is reached, something above failed
+    ' Re-check I/O pin assignments, bus speed, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 #elseifdef ICM20649_I2C
 
-PUB Start{}: okay
-' Start with "standard" Propeller I2C pins and 100kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR_BITS)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): okay
-' Start with custom I2C I/O pin settings and bus speed
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)
-                _addr := (||(ADDR_BITS <> 0)) << 1
-                time.usleep(core#TPOR)                  ' Device startup delay
-                if i2c.present(SLAVE_WR | _addr)        ' Response from device?
-                    if deviceid{} == core#DEVID_RESP    ' Verify device ID
-                        reset{}                         ' Restore default settings
-                        return
-
-    return FALSE                                        ' One of the above failed
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+' Start using custom I/O pin settings and bus frequency
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            _addr := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
+            time.usleep(core#TPOR)              ' wait for device startup
+            if i2c.present(SLAVE_WR | _addr)    ' test device bus presence
+                if deviceid{} == core#DEVID_RESP' validate device
+                    reset{}                     ' reset/start in known state
+                    return
+    ' if this point is reached, something above failed
+    ' Re-check I/O pin assignments, bus speed, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 #endif
 
@@ -139,35 +128,30 @@ PUB Stop{}
 '   power down the device
 '   stop the low-level interface engine (e.g., I2C, SPI, UART, etc)
 #ifdef ICM20649_SPI
-    spi.stop{}
+    spi.deinit{}
 #elseifdef ICM20649_I2C
-    i2c.terminate{}
+    i2c.deinit{}
 #endif
 
 PUB Defaults{}
 ' Set factory defaults
     reset{}
+
+PUB Preset_Active{}
+' Like Defaults(), but
+'   * powers on sensor
+'   * sets scaling factors
+    reset{}
+    powered(true)
     accelscale(4)
     gyroscale(500)
     tempscale(C)
-
-PUB PresetIMUActive 'XXX tentatively named
-' Preset settings:
-    powered(true)
-    clocksource(AUTO)
-    accelopmode(NORMAL)
-    accelaxisenabled(%111)
-    acceldatarate(1127)
-    accellowpassfilter(50)
-    gyroaxisenabled(%111)
-    gyrodatarate(1100)
-    gyrolowpassfilter(51)
-    tempenabled(true)
     tempscale(C)
 
 PUB AccelAxisEnabled(mask): curr_mask
 ' Enable data output for accelerometer (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
+'       (default: %111)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: All axes are affected. The mask parameter is used for
 '       compatibility with other IMU drivers.
@@ -241,18 +225,18 @@ PUB AccelDataOverrun{}: flag
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := 0
 
-PUB AccelDataRate(Hz): curr_Hz
+PUB AccelDataRate(rate): curr_rate
 ' Set accelerometer output data rate, in Hz
-'   Valid values: 1..1127
+'   Valid values: 1..1127 (default: 1127)
 '   Any other value polls the chip and returns the current setting
-    case Hz
+    case rate
         1..1127:
-            Hz := (1127 / Hz) - 1
-            writereg(core#ACCEL_SMPLRT_DIV, 2, @Hz)
+            rate := (1127 / rate) - 1
+            writereg(core#ACCEL_SMPLRT_DIV, 2, @rate)
         other:
-            curr_Hz := 0
-            readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_Hz)
-            return (1127 / (curr_Hz + 1))
+            curr_rate := 0
+            readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_rate)
+            return (1127 / (curr_rate + 1))
 
 PUB AccelDataReady{}: flag
 ' Flag indicating new accelerometer data available
@@ -275,7 +259,7 @@ PUB AccelInt{}: flag
 
 PUB AccelLowPassFilter(freq): curr_freq | lpf_enable
 ' Set accelerometer output data low-pass filter cutoff frequency, in Hz
-'   Valid values: 6, 12, 24, 50, 111, 246, 473
+'   Valid values: 6, 12, 24, 50, 111, *246, 473
 '   Any other value polls the chip and returns the current setting
     curr_freq := lpf_enable := 0
     readreg(core#ACCEL_CFG, 1, @curr_freq)
@@ -299,7 +283,7 @@ PUB AccelLowPassFilter(freq): curr_freq | lpf_enable
 PUB AccelOpMode(mode): curr_mode
 ' Set accelerometer operating mode
 '   Valid values:
-'       NORMAL (0): Normal operating mode
+'      *NORMAL (0): Normal operating mode
 '       LOWPWR (1): Low-power mode
 '   Any other value polls the chip and returns the current setting
     curr_mode := 0
@@ -417,7 +401,7 @@ PUB DeviceID{}: id
 
 PUB FIFOEnabled(state): curr_state
 ' Enable the FIFO
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: This disables the interface to the FIFO, but the chip will still write data to it, if FIFO data sources are defined with FIFOSource()
     curr_state := 0
@@ -441,7 +425,7 @@ PUB FIFOMode(mode): curr_mode
 ' Set FIFO mode
 '   Valid values:
 '       BYPASS (2): FIFO disabled
-'       STREAM (0): FIFO enabled; when full, new data overwrites old data
+'      *STREAM (0): FIFO enabled; when full, new data overwrites old data
 '       FIFO (15): FIFO enabled; when full, no new data will be written to FIFO
 '   Any other value polls the chip and returns the current setting
 '   NOTE: If no data sources are set using FIFOSource(), the current mode returned will be BYPASS (0), regardless of what the mode was previously set to
@@ -507,6 +491,7 @@ PUB FIFOUnreadSamples{}: nr_samples
 PUB GyroAxisEnabled(mask): curr_mask
 ' Enable data output for gyroscope (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
+'       (default: %111)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: All axes are affected. The mask parameter is used for
 '       compatibility with other IMU drivers.
@@ -563,7 +548,7 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
 
 PUB GyroDataRate(rate): curr_rate
 ' Set gyroscope output data rate, in Hz
-'   Valid values: 1..1100
+'   Valid values: 1..1100 (default: 1100)
 '   Any other value polls the chip and returns the current setting
     case rate
         1..1100:
@@ -672,7 +657,7 @@ PUB IntMask(mask): curr_mask
 
 PUB Powered(state): curr_state
 ' Enable device power
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
     curr_state := 0
     readreg(core#PWR_MGMT_1, 1, @curr_state)
@@ -687,7 +672,7 @@ PUB Powered(state): curr_state
 
 PUB Reset{} | tmp
 ' Reset the device
-    tmp := 1 << core#DEV_RESET
+    tmp := (1 << core#DEV_RESET)
     writereg(core#PWR_MGMT_1, 1, @tmp)
 
 PUB TempDataReady{}: flag
@@ -698,7 +683,7 @@ PUB TempDataReady{}: flag
 
 PUB TempEnabled(state): curr_state
 ' Enable the on-chip temperature sensor
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
     curr_state := 0
     readreg(core#PWR_MGMT_1, 1, @curr_state)
@@ -768,35 +753,37 @@ PRI bankSel(bank_nr) | cmd_pkt
 #ifdef ICM20649_SPI
         cmd_pkt.byte[0] := core#REG_BANK_SEL
         cmd_pkt.byte[1] := bank_nr << core#USER_BANK
-        spi.write(true, @cmd_pkt, 2, true)
+        spi.deselectafter(true)
+        spi.wrblock_lsbf(@cmd_pkt, 2)
 #elseifdef ICM20649_I2C
         cmd_pkt.byte[0] := SLAVE_WR
         cmd_pkt.byte[1] := core#REG_BANK_SEL
         cmd_pkt.byte[2] := bank_nr << core#USER_BANK
         i2c.start{}
-        i2c.wr_block(@cmd_pkt, 3)
+        i2c.wrblock_lsbf(@cmd_pkt, 3)
         i2c.stop{}
 #endif
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
 ' Read nr_bytes from the slave device
-    case reg_nr                                         ' Basic register validation
-        core#ACCEL_XOUT_H..core#TEMP_OUT_H:             ' Prioritize output data regs
+    case reg_nr                                 ' validate reg #
+        core#ACCEL_XOUT_H..core#TEMP_OUT_H:     ' prioritize output data regs
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr | core#R
-            spi.write(true, @cmd_pkt, 1, false)
-            spi.read(@tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.rdblock_lsbf(@tmp, nr_bytes)
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_RD | _addr)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
 #endif
             return
@@ -807,22 +794,21 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             banksel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr.byte[0] | core#R
-            spi.write(true, @cmd_pkt, 1, false)
-
-            spi.read(@tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.rdblock_lsbf(@tmp, nr_bytes)
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
-            cmd_pkt.byte[1] := reg_nr.byte[0]            ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write(SLAVE_RD | _addr)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
-
+            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
 #endif
             banksel(0)
@@ -831,7 +817,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
 ' Write nr_bytes to the slave device
-    case reg_nr                                         ' Basic reg. validation
+    case reg_nr                                 ' validate reg #
         $003, $005, $006, $007, $00f..$013, $066..$069, $072, $076, $102,{
         } $103, $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$316:
@@ -841,16 +827,16 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
                 tmp.byte[i] := byte[ptr_buff][nr_bytes-1-i]
 
             cmd_pkt.byte[0] := reg_nr.byte[0]
-            spi.write(true, @cmd_pkt, 1, false)
-            spi.write(true, @tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(@tmp, nr_bytes)
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
-            cmd_pkt.byte[1] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
-
-            repeat tmp from nr_bytes-1 to 0
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_msbf(ptr_buff, nr_bytes)
             i2c.stop{}
 #endif
             banksel(0)
