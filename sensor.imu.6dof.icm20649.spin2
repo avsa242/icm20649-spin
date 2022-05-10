@@ -6,7 +6,7 @@
         (P2 version)
     Copyright (c) 2022
     Started Sep 4, 2020
-    Updated Apr 23, 2022
+    Updated May 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -613,10 +613,22 @@ PUB MagDataReady()
 PUB MagScale(scale=-2)
 ' dummy method
 
-PUB MagWord2Gauss(mag_word)
+PUB MagXWord2Gauss(mag_word): mag_gauss
 ' dummy method
 
-PUB MagWord2Tesla(mag_word)
+PUB MagYWord2Gauss(mag_word): mag_gauss
+' dummy method
+
+PUB MagZWord2Gauss(mag_word): mag_gauss
+' dummy method
+
+PUB MagXWord2Tesla(mag_word): mag_tesla
+' dummy method
+
+PUB MagYWord2Tesla(mag_word): mag_tesla
+' dummy method
+
+PUB MagZWord2Tesla(mag_word): mag_tesla
 ' dummy method
 
 PUB Powered(state=-2): curr_state

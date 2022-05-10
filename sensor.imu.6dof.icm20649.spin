@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Apr 23, 2022
+    Updated May 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,7 +40,7 @@ CON
     CAL_G_DR                = 200
     CAL_M_DR                = 0
 
-' Bias adjustment (AccelBias{}, GyroBias{}) read or write
+' Bias adjustment (AccelBias(), GyroBias()) read or write
     R                       = 0
     W                       = 1
 
@@ -88,7 +88,7 @@ OBJ
 #elseifdef ICM20649_I2C
     i2c : "com.i2c"                             ' PASM I2C engine
 #endif
-    core: "core#con.icm20649"                   ' hw-specific low-level const's
+    core: "core.con.icm20649"                   ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
 PUB Null{}
@@ -616,10 +616,22 @@ PUB MagDataReady{}
 PUB MagScale(scale)
 ' dummy method
 
-PUB MagWord2Gauss(mag_word)
+PUB MagXWord2Gauss(mag_word): mag_gauss
 ' dummy method
 
-PUB MagWord2Tesla(mag_word)
+PUB MagYWord2Gauss(mag_word): mag_gauss
+' dummy method
+
+PUB MagZWord2Gauss(mag_word): mag_gauss
+' dummy method
+
+PUB MagXWord2Tesla(mag_word): mag_tesla
+' dummy method
+
+PUB MagYWord2Tesla(mag_word): mag_tesla
+' dummy method
+
+PUB MagZWord2Tesla(mag_word): mag_tesla
 ' dummy method
 
 PUB Powered(state): curr_state
@@ -677,7 +689,7 @@ PUB Temperature{}: temp
             return
 
 PUB TempOffset(u8): curr_offs
-' Set room temperature offset for Temperature{}
+' Set room temperature offset for Temperature()
 '   Valid values: 0..255
 '   Any other value returns the current setting
     case u8
