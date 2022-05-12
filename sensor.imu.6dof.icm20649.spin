@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated May 10, 2022
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -316,10 +316,6 @@ PUB AccelScale(scale): curr_scl
     scale := ((curr_scl & core#ACCEL_FS_SEL_MASK) | scale) & core#ACCEL_CFG_MASK
     writereg(core#ACCEL_CFG, 1, @scale)
 
-PUB AccelWord2G(accel_word): accel_g
-' Convert accelerometer ADC word to g's
-    return (accel_word * _ares)
-
 PUB ClockSource(src): curr_src
 ' Set sensor clock source
 '   Valid values:
@@ -567,10 +563,6 @@ PUB GyroScale(scale): curr_scl
     scale := ((curr_scl & core#GYRO_FS_SEL_MASK) | scale) & core#GYRO_CFG1_MASK
     writereg(core#GYRO_CFG1, 1, @scale)
 
-PUB GyroWord2DPS(gyro_word): gyro_dps
-' Convert gyroscope ADC word to degrees per second
-    return (gyro_word * _gres)
-
 PUB Interrupt{}: flag
 ' Read interrupt state
 '   Bit 3210 (For each bit, 0: No interrupt, 1: Interrupt has been generated)
@@ -614,24 +606,6 @@ PUB MagDataReady{}
 ' dummy method
 
 PUB MagScale(scale)
-' dummy method
-
-PUB MagXWord2Gauss(mag_word): mag_gauss
-' dummy method
-
-PUB MagYWord2Gauss(mag_word): mag_gauss
-' dummy method
-
-PUB MagZWord2Gauss(mag_word): mag_gauss
-' dummy method
-
-PUB MagXWord2Tesla(mag_word): mag_tesla
-' dummy method
-
-PUB MagYWord2Tesla(mag_word): mag_tesla
-' dummy method
-
-PUB MagZWord2Tesla(mag_word): mag_tesla
 ' dummy method
 
 PUB Powered(state): curr_state
