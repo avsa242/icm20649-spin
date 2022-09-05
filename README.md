@@ -23,10 +23,12 @@ P1/SPIN1:
 * spin-standard-library
 * 1 extra core/cog for the PASM I2C or SPI engine (none if the bytecode engine is used)
 * sensor.imu.common.spinh (provided by spin-standard-library)
+* sensor.temp.common.spinh (provided by spin-standard-library)
 
 P2/SPIN2:
 * p2-spin-standard-library
 * sensor.imu.common.spin2h (provided by p2-spin-standard-library)
+* sensor.temp.common.spin2h (provided by p2-spin-standard-library)
 
 ## Compiler Compatibility
 
