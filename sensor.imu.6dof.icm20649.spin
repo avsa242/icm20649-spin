@@ -5,11 +5,12 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Sep 21, 2022
+    Updated Oct 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#include "sensor.imu.common.spinh"
+#include "sensor.accel.common.spinh"
+#include "sensor.gyroscope.common.spinh"
 #include "sensor.temp.common.spinh"
 
 CON
@@ -79,6 +80,7 @@ VAR
     long _CS
     word _abias_fact[ACCEL_DOF]
     byte _roomtemp_offs
+    byte _addr_bits
 
 OBJ
 
@@ -116,7 +118,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
         if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             _CS := CS_PIN
             time.usleep(core#G_START_COLD)      ' wait for device startup
-            if deviceid{} == core#DEVID_RESP    ' validate device
+            if (dev_id{} == core#DEVID_RESP)    ' validate device
                 { read the factory accel bias }
                 accelbias(@_abias_fact[X_AXIS], @_abias_fact[Y_AXIS], @_abias_fact[Z_AXIS], R)
                 return
@@ -127,7 +129,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 
 #elseifdef ICM20649_I2C
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR_BITS)
 
@@ -138,9 +140,8 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             _addr_bits := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
             time.usleep(core#G_START_COLD)      ' wait for device startup
-            if i2c.present(SLAVE_WR | _addr_bits)    ' test device bus presence
-                if deviceid{} == core#DEVID_RESP' validate device
-                    return
+            if (dev_id{} == core#DEVID_RESP)' validate device
+                return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -164,16 +165,16 @@ PUB defaults{}
     reset{}
 
 PUB preset_active{}
-' Like Defaults(), but
+' Like defaults(), but
 '   * powers on sensor
 '   * sets scaling factors
     reset{}
     powered(true)
-    accelscale(4)
-    gyroscale(500)
-    tempscale(C)
+    accel_scale(4)
+    gyro_scale(500)
+    temp_scale(C)
 
-PUB accelaxisenabled(mask): curr_mask
+PUB accel_axis_ena(mask): curr_mask
 ' Enable data output for accelerometer (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
 '       (default: %111)
@@ -195,62 +196,46 @@ PUB accelaxisenabled(mask): curr_mask
     mask := (curr_mask & core#DIS_ACCEL_MASK) | mask
     writereg(core#PWR_MGMT_2, 1, @mask)
 
-PUB accelbias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
-' Read or write/manually set accelerometer calibration offset values
-'   Valid values:
-'       When rw == W (1, write)
-'           ptr_x, ptr_y, ptr_z: -16384..16383
-'       When rw == R (0, read)
-'           ptr_x, ptr_y, ptr_z:
-'               Pointers to variables to hold current settings for respective axes
+PUB accel_bias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
+' Read accelerometer calibration offset values
 '   NOTE: The ICM20649 accelerometer is pre-programmed with offsets, which may
 '       or may not be adequate for your application
-    ' Discrete reads because the three axes aren't contiguous register pairs
+    { Discrete reads because the three axes aren't contiguous register pairs }
     readreg(core#XA_OFFS_H, 2, @tmp[X_AXIS])
     readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])
     readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
 
-    case rw
-        W:
-            ' preserve temperature compensation bit
-            tc_bit[X_AXIS] := tmp[X_AXIS] & 1
-            tc_bit[Y_AXIS] := tmp[Y_AXIS] & 1
-            tc_bit[Z_AXIS] := tmp[Z_AXIS] & 1
+    long[ptr_x] := ~~tmp[X_AXIS]
+    long[ptr_y] := ~~tmp[Y_AXIS]
+    long[ptr_z] := ~~tmp[Z_AXIS]
 
-            ptr_x := (_abias_fact[X_AXIS]-((ptr_x / 8) & $FFFE)) | tc_bit[X_AXIS]
-            ptr_y := (_abias_fact[Y_AXIS]-((ptr_y / 8) & $FFFE)) | tc_bit[Y_AXIS]
-            ptr_z := (_abias_fact[Z_AXIS]-((ptr_z / 8) & $FFFE)) | tc_bit[Z_AXIS]
+PUB accel_set_bias(x, y, z) | tmp[3], tc_bit[3]
+' Write accelerometer calibration offset values
+    { read the offset regs to get the temp compensation bits }
+    readreg(core#XA_OFFS_H, 2, @tmp[X_AXIS])
+    readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])
+    readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
+    tc_bit[X_AXIS] := (tmp[X_AXIS] & 1)
+    tc_bit[Y_AXIS] := (tmp[Y_AXIS] & 1)
+    tc_bit[Z_AXIS] := (tmp[Z_AXIS] & 1)
 
-            writereg(core#XA_OFFS_H, 2, @ptr_x)
-            writereg(core#YA_OFFS_H, 2, @ptr_y)
-            writereg(core#ZA_OFFS_H, 2, @ptr_z)
-            return
-        R:
-            long[ptr_x] := ~~tmp[X_AXIS]
-            long[ptr_y] := ~~tmp[Y_AXIS]
-            long[ptr_z] := ~~tmp[Z_AXIS]
-        other:
-            return
+    x := (_abias_fact[X_AXIS]-((x / 8) & $FFFE)) | tc_bit[X_AXIS]
+    y := (_abias_fact[Y_AXIS]-((y / 8) & $FFFE)) | tc_bit[Y_AXIS]
+    z := (_abias_fact[Z_AXIS]-((z / 8) & $FFFE)) | tc_bit[Z_AXIS]
 
-PUB accelclearint{} | tmp
-' Clears out any interrupts set up on the Accelerometer
-'   and resets all Accelerometer interrupt registers to their default values.
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    tmp := 0
+    writereg(core#XA_OFFS_H, 2, @x)
+    writereg(core#YA_OFFS_H, 2, @y)
+    writereg(core#ZA_OFFS_H, 2, @z)
+    return
 
-PUB acceldata(ptr_x, ptr_y, ptr_z) | tmp[2]
+PUB accel_data(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
     readreg(core#ACCEL_XOUT_H, 6, @tmp)
     long[ptr_x] := ~~tmp.word[2]
     long[ptr_y] := ~~tmp.word[1]
     long[ptr_z] := ~~tmp.word[0]
 
-PUB acceldataoverrun{}: flag
-' Indicates previously acquired data has been overwritten
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := 0
-
-PUB acceldatarate(rate): curr_rate
+PUB accel_data_rate(rate): curr_rate
 ' Set accelerometer output data rate, in Hz
 '   Valid values: 1..1127 (default: 1127)
 '   Any other value polls the chip and returns the current setting
@@ -263,18 +248,12 @@ PUB acceldatarate(rate): curr_rate
             readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_rate)
             return (1127 / (curr_rate + 1))
 
-PUB acceldataready{}: flag
+PUB accel_data_rdy{}: flag
 ' Flag indicating new accelerometer data available
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
-    return xlgdataready{}
+    return xlg_data_rdy{}
 
-PUB accelint{}: flag
-' Flag indicating accelerometer interrupt asserted
-'   Returns TRUE if interrupt asserted, FALSE if not
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := 0
-
-PUB accellowpassfilter(freq): curr_freq | lpf_enable
+PUB accel_lpf_freq(freq): curr_freq | lpf_enable
 ' Set accelerometer output data low-pass filter cutoff frequency, in Hz
 '   Valid values: 6, 12, 24, 50, 111, *246, 473
 '   Any other value polls the chip and returns the current setting
@@ -297,7 +276,7 @@ PUB accellowpassfilter(freq): curr_freq | lpf_enable
 }   freq | lpf_enable
     writereg(core#ACCEL_CFG, 1, @freq)
 
-PUB accelopmode(mode): curr_mode
+PUB accel_opmode(mode): curr_mode
 ' Set accelerometer operating mode
 '   Valid values:
 '      *NORMAL (0): Normal operating mode
@@ -314,7 +293,7 @@ PUB accelopmode(mode): curr_mode
     mode := (curr_mode & core#ACCEL_CYCLE_MASK) | mode
     writereg(core#LP_CONFIG, 1, @mode)
 
-PUB accelscale(scale): curr_scl
+PUB accel_scale(scale): curr_scl
 ' Set accelerometer full-scale range, in g's
 '   Valid values: *4, 8, 16, 30
 '   Any other value polls the chip and returns the current setting
@@ -332,7 +311,7 @@ PUB accelscale(scale): curr_scl
     scale := ((curr_scl & core#ACCEL_FS_SEL_MASK) | scale) & core#ACCEL_CFG_MASK
     writereg(core#ACCEL_CFG, 1, @scale)
 
-PUB clocksource(src): curr_src
+PUB clock_src(src): curr_src
 ' Set sensor clock source
 '   Valid values:
 '       INT20 (0): Internal 20MHz oscillator
@@ -348,11 +327,12 @@ PUB clocksource(src): curr_src
     src := (curr_src & core#CLKSEL_MASK) | src
     writereg(core#PWR_MGMT_1, 1, @src)
 
-PUB deviceid{}: id
+PUB dev_id{}: id
 ' Read device identification
+    id := 0
     readreg(core#WHO_AM_I, 1, @id)
 
-PUB fifoenabled(state): curr_state
+PUB fifo_ena(state): curr_state
 ' Enable the FIFO
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -367,14 +347,14 @@ PUB fifoenabled(state): curr_state
         other:
             return (((curr_state >> core#FIFO_EN) & 1) == 1)
 
-PUB fifofull{}: flag
+PUB fifo_full{}: flag
 ' Flag indicating FIFO is full
 '   Returns: TRUE (-1) if FIFO is full, FALSE (0) otherwise
 '   NOTE: If this flag is set, the oldest data has already been dropped from the FIFO
     readreg(core#INT_STATUS_2, 1, @flag)
     return (((flag >> core#FIFO_OVRFL_INT) & 1) == 1)
 
-PUB fifomode(mode): curr_mode
+PUB fifo_mode(mode): curr_mode
 ' Set FIFO mode
 '   Valid values:
 '       BYPASS (2): FIFO disabled
@@ -386,19 +366,19 @@ PUB fifomode(mode): curr_mode
     readreg(core#FIFO_MODE, 1, @curr_mode)
     case mode
         BYPASS:                                 ' If bypassing the FIFO, turn
-            fifosource(%00000000)               '   off FIFO data collection
+            fifo_src(%00000000)               '   off FIFO data collection
             return
         STREAM, FIFO:
         other:
             curr_mode := curr_mode & 1
-            if fifosource(-2)                   ' If there's a mask set with FIFOSource(), return
+            if fifo_src(-2)                   ' If there's a mask set with FIFOSource(), return
                 return                          '   either STREAM or FIFO as the current mode
             else
                 return BYPASS                   ' If not, anything besides 0 (BYPASS) doesn't really matter or make sense
     mode := ((curr_mode & core#FIFO_MODE_MASK) | mode)
     writereg(core#FIFO_MODE, 1, @mode)
 
-PUB fiforead(nr_bytes, ptr_data)
+PUB fifo_read(nr_bytes, ptr_data)
 ' Read FIFO data
 '   Structure of data stored in FIFO
 '   (as applicable, depending on what sources are enabled with FIFOSource()):
@@ -411,7 +391,7 @@ PUB fiforead(nr_bytes, ptr_data)
 '       Temp MSB, LSB
     readreg(core#FIFO_R_W, nr_bytes, ptr_data)
 
-PUB fifosource(mask): curr_mask
+PUB fifo_src(mask): curr_mask
 ' Set FIFO source data, as a bitmask
 '   Valid values: 1: enable source, 0: disable source
 '       Bits: 43210
@@ -429,19 +409,12 @@ PUB fifosource(mask): curr_mask
             readreg(core#FIFO_EN_2, 1, @curr_mask)
             return
 
-PUB fifothreshold(level): curr_lvl
-' Set FIFO threshold level
-'   Valid values:
-'   Any other value polls the chip and returns the current setting
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_lvl := 0
-
-PUB fifounreadsamples{}: nr_samples
+PUB fifo_nr_unread{}: nr_samples
 ' Number of unread samples stored in FIFO
 '   Returns: unsigned 13bit
     readreg(core#FIFO_COUNTH, 2, @nr_samples)
 
-PUB gyroaxisenabled(mask): curr_mask
+PUB gyro_axis_ena(mask): curr_mask
 ' Enable data output for gyroscope (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
 '       (default: %111)
@@ -462,40 +435,31 @@ PUB gyroaxisenabled(mask): curr_mask
     mask := ((curr_mask & core#DIS_GYRO_MASK) | mask)
     writereg(core#PWR_MGMT_2, 1, @mask)
 
-PUB gyrobias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
+PUB gyro_bias(x, y, z) | tmp[3]
+' Read gyroscope calibration offset values
+'   x, y, z: pointers to copy offsets to
+    longfill(@tmp, 0, GYRO_DOF)
+    readreg(core#XG_OFFS_USRH, 2, @tmp[X_AXIS])
+    readreg(core#YG_OFFS_USRH, 2, @tmp[Y_AXIS])
+    readreg(core#ZG_OFFS_USRH, 2, @tmp[Z_AXIS])
+    long[x] := ~~tmp[X_AXIS]
+    long[y] := ~~tmp[Y_AXIS]
+    long[z] := ~~tmp[Z_AXIS]
+
+PUB gyro_set_bias(x, y, z)
 ' Read or write/manually set gyroscope calibration offset values
 '   Valid values:
-'       When rw == W (1, write)
-'           ptr_x, ptr_y, ptr_z: -32768..32767
-'       When rw == R (0, read)
-'           ptr_x, ptr_y, ptr_z:
-'               Pointers to variables to hold current settings for respective axes
-    case rw
-         W:
-            ptr_x := -(ptr_x / 4)
-            ptr_y := -(ptr_y / 4)
-            ptr_z := -(ptr_z / 4)
+'   -32768..32767 (clamped to range)
+    x := -((-32768 #> x <# 32767) / 4)
+    y := -((-32768 #> y <# 32767) / 4)
+    z := -((-32768 #> z <# 32767) / 4)
 
-            writereg(core#XG_OFFS_USRH, 2, @ptr_x)
-            writereg(core#YG_OFFS_USRH, 2, @ptr_y)
-            writereg(core#ZG_OFFS_USRH, 2, @ptr_z)
-            return
-        R:
-            readreg(core#XG_OFFS_USRH, 2, @tmp[X_AXIS])
-            readreg(core#YG_OFFS_USRH, 2, @tmp[Y_AXIS])
-            readreg(core#ZG_OFFS_USRH, 2, @tmp[Z_AXIS])
-            long[ptr_x] := ~~tmp[X_AXIS]
-            long[ptr_y] := ~~tmp[Y_AXIS]
-            long[ptr_z] := ~~tmp[Z_AXIS]
-        other:
-            return
+    writereg(core#XG_OFFS_USRH, 2, @x)
+    writereg(core#YG_OFFS_USRH, 2, @y)
+    writereg(core#ZG_OFFS_USRH, 2, @z)
+    return
 
-PUB gyroclearint{} | tmp
-' Clears out any interrupts set up on the Gyroscope and resets all Gyroscope interrupt registers to their default values.
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    tmp := 0
-
-PUB gyrodata(ptr_x, ptr_y, ptr_z) | tmp[2]
+PUB gyro_data(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Gyroscope output registers
     tmp := 0
     readreg(core#GYRO_XOUT_H, 6, @tmp)
@@ -503,10 +467,7 @@ PUB gyrodata(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[1]
     long[ptr_z] := ~~tmp.word[0]
 
-PUB gyrodataoverrun{}
-' dummy method
-
-PUB gyrodatarate(rate): curr_rate
+PUB gyro_data_rate(rate): curr_rate
 ' Set gyroscope output data rate, in Hz
 '   Valid values: 1..1100 (default: 1100)
 '   Any other value polls the chip and returns the current setting
@@ -519,27 +480,13 @@ PUB gyrodatarate(rate): curr_rate
             readreg(core#GYRO_SMPLRT_DIV, 1, @curr_rate)
             return 1100 / (curr_rate + 1)
 
-PUB gyrodataready{}: flag
+PUB gyro_data_rdy{}: flag
 ' Flag indicating new gyroscope data available
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
     flag := 0
-    return xlgdataready{}
+    return xlg_data_rdy{}
 
-PUB gyroint{}: flag
-' Flag indicating gyroscope interrupt asserted
-'   Returns TRUE if interrupt asserted, FALSE if not
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := 0
-
-PUB gyrointselect(mode): curr_mode
-' Set gyroscope interrupt generator selection
-'   Valid values:
-'
-'   Any other value polls the chip and returns the current setting
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_mode := 0
-
-PUB gyrolowpassfilter(freq): curr_freq | lpf_enable
+PUB gyro_lpf_freq(freq): curr_freq | lpf_enable
 ' Set gyroscope output data low-pass filter cutoff frequency, in Hz
 '   Valid values: 6, 12, 24, 51, 120, 152, 197, 361, *12106 (LPF disabled)
 '   Any other value polls the chip and returns the current setting
@@ -561,7 +508,7 @@ PUB gyrolowpassfilter(freq): curr_freq | lpf_enable
     freq := (curr_freq & core#GYRO_DLPFCFG_MASK & core#GYRO_FCH_MASK) | freq | lpf_enable
     writereg(core#GYRO_CFG1, 1, @freq)
 
-PUB gyroscale(scale): curr_scl
+PUB gyro_scale(scale): curr_scl
 ' Set gyroscope full-scale range, in degrees per second
 '   Valid values: *500, 1000, 2000, 4000
 '   Any other value polls the chip and returns the current setting
@@ -590,7 +537,7 @@ PUB interrupt{}: flag
     readreg(core#INT_STATUS, 1, @flag)
     flag &= core#INT_STATUS_MASK
 
-PUB intmask(mask): curr_mask
+PUB int_mask(mask): curr_mask
 ' Set interrupt mask
 '   Valid values:
 '   Bit 3210 (For each bit, 0: disable interrupt, 1: enable interrupt)
@@ -605,24 +552,6 @@ PUB intmask(mask): curr_mask
             curr_mask := 0
             readreg(core#INT_ENABLE, 1, @curr_mask)
             return
-
-PUB magbias(x, y, z, rw)
-'dummy method
-
-PUB magdata(x, y, z)
-' dummy method
-
-PUB magdataoverrun{}
-' dummy method
-
-PUB magdatarate(rate)
-' dummy method
-
-PUB magdataready{}
-' dummy method
-
-PUB magscale(scale)
-' dummy method
 
 PUB powered(state): curr_state
 ' Enable device power
@@ -645,18 +574,18 @@ PUB reset{} | tmp
     writereg(core#PWR_MGMT_1, 1, @tmp)
     time.usleep(core#G_START_COLD)
 
-PUB tempdata{}: adc_word
+PUB temp_data{}: adc_word
 ' Read temperature ADC data
     adc_word := 0
     readreg(core#TEMP_OUT_H, 2, @adc_word)
 
-PUB tempdataready{}: flag
+PUB temp_data_rdy{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
     flag := 0
 
-PUB tempenabled(state): curr_state
+PUB temp_ena(state): curr_state
 ' Enable the on-chip temperature sensor
 '   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
@@ -672,8 +601,8 @@ PUB tempenabled(state): curr_state
     state := ((curr_state & core#TEMP_DIS_MASK) | state) & core#PWR_MGMT_1_MASK
     writereg(core#PWR_MGMT_1, 1, @state)
 
-PUB tempoffset(u8): curr_offs
-' Set room temperature offset for Temperature()
+PUB temp_rmtemp_offset(u8): curr_offs
+' Set room temperature offset for temperature()
 '   Valid values: 0..255
 '   Any other value returns the current setting
     case u8
@@ -682,7 +611,7 @@ PUB tempoffset(u8): curr_offs
         other:
             return _roomtemp_offs
 
-PUB tempword2deg(adc_word): temp
+PUB temp_word2deg(adc_word): temp
 ' Convert temperature ADC word to degrees in chosen scale
     temp := (( (adc_word-_roomtemp_offs) * 1_0000) / 333_87) + 21_00 'XXX unverified
     case _temp_scale
@@ -691,22 +620,15 @@ PUB tempword2deg(adc_word): temp
         other:
             return
 
-PUB xlgdatarate(rate): curr_rate
-' Set output data rate, in Hz, of accelerometer and gyroscope
-'   Valid values:
-'   Any other value polls the chip and returns the current setting
-'   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_rate := 0
-
-PUB xlgdataready{}: flag
+PUB xlg_data_rdy{}: flag
 ' Flag indicating new gyroscope/accelerometer data is ready to be read
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
-'   NOTE: The update rate of this flag depends upon the GyroDataRate() setting
-'       AccelDataRate() has no effect
+'   NOTE: The update rate of this flag depends upon the gyro_data_rate() setting
+'       accel_data_rate() has no effect
     readreg(core#INT_STATUS_1, 1, @flag)
     return ((flag & 1) == 1)
 
-PRI banksel(bank_nr) | cmd_pkt
+PRI bank_sel(bank_nr) | cmd_pkt
 ' Select ICM20649 register bank
 '   Valid values: 0..3
 '   Any other value is ignored
@@ -753,7 +675,7 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
         } $029, $03b..$052, $066..$069, $070..$072, $074, $076, $102, $103,{
         } $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$317:
-            banksel(reg_nr.byte[1])
+            bank_sel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr.byte[0] | core#R
             outa[_CS] := 0
@@ -773,7 +695,7 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c.NAK)
             i2c.stop{}
 #endif
-            banksel(0)
+            bank_sel(0)
         other:
             return
 
@@ -783,7 +705,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
         $003, $005, $006, $007, $00f..$013, $066..$069, $072, $076, $102,{
         } $103, $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$316:
-            banksel(reg_nr.byte[1])
+            bank_sel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             repeat i from 0 to nr_bytes-1
                 tmp.byte[i] := byte[ptr_buff][nr_bytes-1-i]
@@ -801,7 +723,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
             i2c.wrblock_msbf(ptr_buff, nr_bytes)
             i2c.stop{}
 #endif
-            banksel(0)
+            bank_sel(0)
         other:
             return
 
