@@ -196,7 +196,7 @@ PUB accel_axis_ena(mask): curr_mask
     mask := (curr_mask & core#DIS_ACCEL_MASK) | mask
     writereg(core#PWR_MGMT_2, 1, @mask)
 
-PUB accel_bias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
+PUB accel_bias(x, y, z) | tmp[3], tc_bit[3]
 ' Read accelerometer calibration offset values
 '   NOTE: The ICM20649 accelerometer is pre-programmed with offsets, which may
 '       or may not be adequate for your application
@@ -205,9 +205,9 @@ PUB accel_bias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
     readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])
     readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
 
-    long[ptr_x] := ~~tmp[X_AXIS]
-    long[ptr_y] := ~~tmp[Y_AXIS]
-    long[ptr_z] := ~~tmp[Z_AXIS]
+    long[x] := ~~tmp[X_AXIS]
+    long[y] := ~~tmp[Y_AXIS]
+    long[z] := ~~tmp[Z_AXIS]
 
 PUB accel_set_bias(x, y, z) | tmp[3], tc_bit[3]
 ' Write accelerometer calibration offset values
