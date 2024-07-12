@@ -1,59 +1,43 @@
 {
-    --------------------------------------------
-    Filename: ICM20649-Demo.spin2
-    Author: Jesse Burt
-    Description: ICM20649 driver demo (P2 version)
+----------------------------------------------------------------------------------------------------
+    Filename:       ICM20649-Demo.spin
+    Description:    ICM20649 driver demo
         * 6DoF data output
-    Copyright (c) 2022
-    Started Sep 4, 2020
-    Updated Nov 20, 2022
-    See end of file for terms of use.
-    --------------------------------------------
-
-    Build-time symbols supported by driver:
-        -DICM20649_SPI
-        -DICM20649_I2C (default if none specified)
+    Author:         Jesse Burt
+    Started:        Aug 28, 2020
+    Updated:        Jul 12, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
+
+' Uncomment the two lines below to use the driver in SPI mode
+'#define ICM20649_SPI
+'#pragma exportdef(ICM20649_SPI)
+
+
+
 CON
 
     _clkfreq    = cfg._clkfreq_def
     _xtlfreq    = cfg._xtlfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 2_000_000
-
-    { I2C configuration }
-    SCL_PIN     = 0
-    SDA_PIN     = 1
-    I2C_FREQ    = 400_000                       ' max is 400_000
-    ADDR_BITS   = 0                             ' 0, 1
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
-    SPI_FREQ    = 7_000_000                     ' max is 7_000_000
-' --
 
 OBJ
 
-    cfg: "boardcfg.p2eval"
-    sensor: "sensor.imu.6dof.icm20649"
-    ser: "com.serial.terminal.ansi"
+    cfg:    "boardcfg.p2eval"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=2_000_000
+    sensor: "sensor.imu.6dof.icm20649" | {I2C} SCL=0, SDA=1, I2C_FREQ=400_000, I2C_ADDR=0, ...
+                                        {SPI} CS=0, SCK=1, MOSI=2, MISO=3
+
 
 PUB setup()
 
-    ser.start(SER_BAUD)
-    waitms(10)
+    ser.start()
+
     ser.clear()
     ser.strln(@"Serial terminal started")
 
-#ifdef ICM20649_SPI
-    if (sensor.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SPI_FREQ))
-#else
-    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
-#endif
+    if ( sensor.start() )
         ser.strln(@"ICM20649 driver started")
     else
         ser.strln(@"ICM20649 driver failed to start - halting")
@@ -65,16 +49,17 @@ PUB setup()
         ser.pos_xy(0, 3)
         show_accel_data()
         show_gyro_data()
-        if (ser.rx_check() == "c")
+        if ( ser.getchar_noblock() == "c" )
             cal_accel()
             cal_gyro()
 
-#include "acceldemo.common.spin2h"
-#include "gyrodemo.common.spin2h"
+#include "acceldemo.common.spin2h"              ' use code common to all accelerometer
+#include "gyrodemo.common.spin2h"               '   and gyroscope demos
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
